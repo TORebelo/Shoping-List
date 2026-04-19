@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rules": "vitest run --config vitest.rules.config.ts",
+    "test:e2e": "playwright test",
+    "emulator": "firebase emulators:start --only auth,firestore"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
@@ -41,6 +46,7 @@
     "jsdom": "^29.0.2",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.4"
   }
 }
