@@ -1,14 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
-  inviteDoc: null as null | { householdId: string },
-  householdDoc: null as null | {
-    id: string;
-    memberIds: string[];
-    name: string;
-  },
-  memberDocs: [] as { uid: string; color: string }[],
-  userHouseholdIds: [] as string[],
   txOps: [] as {
     op: "set" | "update" | "get";
     path: string;
@@ -19,7 +11,6 @@ const state = vi.hoisted(() => ({
 
 const mocks = vi.hoisted(() => ({
   doc: vi.fn((first: unknown, ...rest: unknown[]) => {
-    // doc(collectionRef, id) — first arg is a collection ref with __path
     if (
       first &&
       typeof first === "object" &&
@@ -29,7 +20,6 @@ const mocks = vi.hoisted(() => ({
       const path = rest.length > 0 ? `${base}/${rest.join("/")}` : base;
       return { __path: path };
     }
-    // doc(db, ...parts)
     return { __path: rest.join("/") };
   }),
   collection: vi.fn((_db: unknown, ...parts: string[]) => ({
@@ -48,46 +38,46 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("firebase/firestore", () => mocks);
 
-import { findHouseholdByCode, joinHousehold } from "./join";
+import { findListByCode, joinList } from "./join";
 
 const db = { __fake: "db" } as never;
 
-describe("findHouseholdByCode", () => {
+describe("findListByCode", () => {
   beforeEach(() => {
     mocks.getDoc.mockReset();
   });
 
-  it("returns the household when invite code exists", async () => {
+  it("returns the list when invite code exists", async () => {
     mocks.getDoc.mockImplementation(async (ref: { __path: string }) => {
       if (ref.__path === "inviteCodes/abc123") {
-        return { exists: () => true, data: () => ({ householdId: "h1" }) };
+        return { exists: () => true, data: () => ({ listId: "l1" }) };
       }
-      if (ref.__path === "households/h1") {
+      if (ref.__path === "lists/l1") {
         return {
           exists: () => true,
-          data: () => ({ id: "h1", name: "Casa" }),
+          data: () => ({ id: "l1", name: "Compras" }),
         };
       }
       return { exists: () => false };
     });
-    const result = await findHouseholdByCode(db, "abc123");
-    expect(result).toMatchObject({ id: "h1", name: "Casa" });
+    const result = await findListByCode(db, "abc123");
+    expect(result).toMatchObject({ id: "l1", name: "Compras" });
   });
 
   it("returns null when invite code is unknown", async () => {
     mocks.getDoc.mockResolvedValue({ exists: () => false });
-    const result = await findHouseholdByCode(db, "nope");
+    const result = await findListByCode(db, "nope");
     expect(result).toBeNull();
   });
 
-  it("returns null when invite points to a missing household", async () => {
+  it("returns null when invite points to a missing list", async () => {
     mocks.getDoc.mockImplementation(async (ref: { __path: string }) => {
       if (ref.__path === "inviteCodes/x") {
-        return { exists: () => true, data: () => ({ householdId: "gone" }) };
+        return { exists: () => true, data: () => ({ listId: "gone" }) };
       }
       return { exists: () => false };
     });
-    const result = await findHouseholdByCode(db, "x");
+    const result = await findListByCode(db, "x");
     expect(result).toBeNull();
   });
 });
@@ -127,7 +117,7 @@ function setupTx(reads: Record<string, unknown>) {
   );
 }
 
-describe("joinHousehold", () => {
+describe("joinList", () => {
   beforeEach(() => {
     state.txOps = [];
     state.txFail = null;
@@ -136,24 +126,24 @@ describe("joinHousehold", () => {
 
   const user = { uid: "u2", displayName: "Beatriz" };
 
-  it("adds member, creates member doc, updates user householdIds", async () => {
+  it("adds member, creates member doc, updates user listIds", async () => {
     setupTx({
-      "inviteCodes/abc": { householdId: "h1" },
-      "households/h1": { id: "h1", memberIds: ["u1"], name: "Casa" },
+      "inviteCodes/abc": { listId: "l1" },
+      "lists/l1": { id: "l1", memberIds: ["u1"], name: "Compras" },
     });
-    const result = await joinHousehold({ db, code: "abc", user });
-    expect(result.householdId).toBe("h1");
+    const result = await joinList({ db, code: "abc", user });
+    expect(result.listId).toBe("l1");
     expect(result.alreadyMember).toBe(false);
 
-    const hhUpdate = state.txOps.find(
-      (o) => o.op === "update" && o.path === "households/h1",
+    const listUpdate = state.txOps.find(
+      (o) => o.op === "update" && o.path === "lists/l1",
     );
-    expect(hhUpdate!.data).toMatchObject({
+    expect(listUpdate!.data).toMatchObject({
       memberIds: { __arrayUnion: ["u2"] },
     });
 
     const memberSet = state.txOps.find(
-      (o) => o.op === "set" && o.path === "households/h1/members/u2",
+      (o) => o.op === "set" && o.path === "lists/l1/members/u2",
     );
     expect(memberSet).toBeDefined();
     expect(memberSet!.data).toMatchObject({
@@ -166,17 +156,17 @@ describe("joinHousehold", () => {
       (o) => o.op === "update" && o.path === "users/u2",
     );
     expect(userUpdate!.data).toMatchObject({
-      householdIds: { __arrayUnion: ["h1"] },
+      listIds: { __arrayUnion: ["l1"] },
     });
   });
 
   it("is idempotent when the user already is a member", async () => {
     setupTx({
-      "inviteCodes/abc": { householdId: "h1" },
-      "households/h1": { id: "h1", memberIds: ["u1", "u2"], name: "Casa" },
+      "inviteCodes/abc": { listId: "l1" },
+      "lists/l1": { id: "l1", memberIds: ["u1", "u2"], name: "Compras" },
     });
-    const result = await joinHousehold({ db, code: "abc", user });
-    expect(result.householdId).toBe("h1");
+    const result = await joinList({ db, code: "abc", user });
+    expect(result.listId).toBe("l1");
     expect(result.alreadyMember).toBe(true);
 
     const writes = state.txOps.filter((o) => o.op !== "get");
@@ -186,12 +176,12 @@ describe("joinHousehold", () => {
   it("throws when invite code does not exist", async () => {
     setupTx({});
     await expect(
-      joinHousehold({ db, code: "nope", user }),
+      joinList({ db, code: "nope", user }),
     ).rejects.toThrow(/código/i);
   });
 
-  it("throws when invite points to a missing household", async () => {
-    setupTx({ "inviteCodes/x": { householdId: "gone" } });
-    await expect(joinHousehold({ db, code: "x", user })).rejects.toThrow();
+  it("throws when invite points to a missing list", async () => {
+    setupTx({ "inviteCodes/x": { listId: "gone" } });
+    await expect(joinList({ db, code: "x", user })).rejects.toThrow();
   });
 });

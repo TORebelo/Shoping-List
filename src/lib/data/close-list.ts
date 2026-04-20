@@ -1,68 +1,41 @@
 import {
-  collection,
   doc,
   runTransaction,
   serverTimestamp,
   type Firestore,
 } from "firebase/firestore";
-import { defaultListTitle } from "@/lib/domain/helpers";
-import type { HouseholdDoc } from "@/lib/domain/types";
+import type { ListDoc } from "@/lib/domain/types";
 
 type Input = {
   db: Firestore;
-  householdId: string;
+  listId: string;
   actor: { uid: string };
 };
 
-type Result = { newListId: string };
+/**
+ * Marks an active list as closed. Does not create a new list — users start
+ * a fresh list from the dashboard when they're ready. Already-closed lists
+ * are rejected so the UI never accidentally rewrites closedAt.
+ */
+export async function closeList(input: Input): Promise<void> {
+  const { db, listId, actor } = input;
 
-export async function closeActiveList(input: Input): Promise<Result> {
-  const { db, householdId, actor } = input;
+  await runTransaction(db, async (tx) => {
+    const listRef = doc(db, "lists", listId);
+    const listSnap = await tx.get(listRef);
+    if (!listSnap.exists()) throw new Error("A lista não existe.");
+    const list = listSnap.data() as ListDoc;
 
-  return runTransaction(db, async (tx) => {
-    const hhRef = doc(db, "households", householdId);
-    const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A lista não existe.");
-    const hh = hhSnap.data() as HouseholdDoc;
-
-    if (!hh.memberIds.includes(actor.uid)) {
+    if (!list.memberIds.includes(actor.uid)) {
       throw new Error("Tens de ser membro da lista.");
     }
-
-    const activeListRef = doc(
-      db,
-      "households",
-      householdId,
-      "lists",
-      hh.activeListId,
-    );
-    const activeListSnap = await tx.get(activeListRef);
-    if (!activeListSnap.exists()) {
-      throw new Error("Lista ativa não encontrada.");
+    if (list.status === "closed") {
+      throw new Error("A lista já está fechada.");
     }
 
-    const listsCol = collection(db, "households", householdId, "lists");
-    const newListRef = doc(listsCol);
-    const newListId = newListRef.id;
-    const now = serverTimestamp();
-
-    tx.update(activeListRef, {
+    tx.update(listRef, {
       status: "closed",
-      closedAt: now,
+      closedAt: serverTimestamp(),
     });
-
-    tx.set(newListRef, {
-      id: newListId,
-      title: defaultListTitle(new Date()),
-      status: "active",
-      itemCount: 0,
-      createdAt: now,
-    });
-
-    tx.update(hhRef, {
-      activeListId: newListId,
-    });
-
-    return { newListId };
   });
 }

@@ -33,7 +33,7 @@ export async function ensureUserDoc(input: Input): Promise<void> {
       uid: input.uid,
       email: input.email,
       displayName,
-      householdIds: [],
+      listIds: [],
       plan: "free",
       createdAt: serverTimestamp(),
     };

@@ -37,40 +37,43 @@ export async function reset(): Promise<void> {
 }
 
 /**
- * Seed a household + owner member + active list using a context that
- * bypasses security rules (for arranging state in tests).
+ * Seed a list + its owner member + user docs using a context that bypasses
+ * security rules (for arranging state in tests).
  */
-export async function seedHousehold(
+export async function seedList(
   env: RulesTestEnvironment,
   opts: {
-    householdId: string;
+    listId: string;
     ownerUid: string;
     memberUids?: string[];
     inviteCode?: string;
-    activeListId?: string;
+    status?: "active" | "closed";
+    itemCount?: number;
   },
 ) {
   const {
-    householdId,
+    listId,
     ownerUid,
     memberUids = [ownerUid],
-    inviteCode = `inv-${householdId}`,
-    activeListId = `list-${householdId}`,
+    inviteCode = `inv-${listId}`,
+    status = "active",
+    itemCount = 0,
   } = opts;
 
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
-    await setDoc(doc(db, "households", householdId), {
-      id: householdId,
-      name: "Casa",
+    await setDoc(doc(db, "lists", listId), {
+      id: listId,
+      name: "Compras",
       createdBy: ownerUid,
       memberIds: memberUids,
       inviteCode,
-      activeListId,
+      status,
+      itemCount,
       createdAt: new Date(),
     });
     for (const uid of memberUids) {
-      await setDoc(doc(db, "households", householdId, "members", uid), {
+      await setDoc(doc(db, "lists", listId, "members", uid), {
         uid,
         displayName: uid,
         color: "#ef4444",
@@ -82,26 +85,16 @@ export async function seedHousehold(
         email: `${uid}@example.com`,
         displayName: uid,
         plan: "free",
-        householdIds: [householdId],
+        listIds: [listId],
         createdAt: new Date(),
       });
     }
-    await setDoc(
-      doc(db, "households", householdId, "lists", activeListId),
-      {
-        id: activeListId,
-        title: "Compras",
-        status: "active",
-        itemCount: 0,
-        createdAt: new Date(),
-      },
-    );
     await setDoc(doc(db, "inviteCodes", inviteCode), {
       code: inviteCode,
-      householdId,
+      listId,
       createdAt: new Date(),
     });
   });
 
-  return { householdId, ownerUid, memberUids, inviteCode, activeListId };
+  return { listId, ownerUid, memberUids, inviteCode };
 }

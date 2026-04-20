@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   ops: [] as { op: string; path: string; data?: unknown }[],
-  household: null as null | {
+  list: null as null | {
     createdBy: string;
     inviteCode: string;
   },
@@ -39,10 +39,10 @@ const mocks = vi.hoisted(() => ({
       const tx = {
         get: async (ref: { __path: string }) => {
           state.ops.push({ op: "get", path: ref.__path });
-          if (ref.__path.startsWith("households/") && state.household) {
+          if (ref.__path.startsWith("lists/") && state.list) {
             return {
               exists: () => true,
-              data: () => state.household,
+              data: () => state.list,
             };
           }
           return { exists: () => false, data: () => undefined };
@@ -70,7 +70,7 @@ describe("rotateInviteCode", () => {
     state.ops = [];
     state.deletedPaths = [];
     state.failTx = null;
-    state.household = {
+    state.list = {
       createdBy: "owner-uid",
       inviteCode: "old-code",
     };
@@ -79,15 +79,15 @@ describe("rotateInviteCode", () => {
   it("writes new invite code and removes old mapping (owner)", async () => {
     const code = await rotateInviteCode({
       db,
-      householdId: "h1",
+      listId: "l1",
       actor: { uid: "owner-uid" },
     });
     expect(code).toMatch(/^[a-z0-9]{6,8}$/);
 
-    const hhUpdate = state.ops.find(
-      (o) => o.op === "update" && o.path === "households/h1",
+    const listUpdate = state.ops.find(
+      (o) => o.op === "update" && o.path === "lists/l1",
     );
-    expect(hhUpdate!.data).toEqual({ inviteCode: code });
+    expect(listUpdate!.data).toEqual({ inviteCode: code });
 
     const inviteSet = state.ops.find(
       (o) => o.op === "set" && o.path === `inviteCodes/${code}`,
@@ -101,18 +101,18 @@ describe("rotateInviteCode", () => {
     await expect(
       rotateInviteCode({
         db,
-        householdId: "h1",
+        listId: "l1",
         actor: { uid: "other" },
       }),
     ).rejects.toThrow(/dono/i);
   });
 
-  it("throws when the household is missing", async () => {
-    state.household = null;
+  it("throws when the list is missing", async () => {
+    state.list = null;
     await expect(
       rotateInviteCode({
         db,
-        householdId: "h1",
+        listId: "l1",
         actor: { uid: "owner-uid" },
       }),
     ).rejects.toThrow();

@@ -11,11 +11,9 @@ import { validateItemName, validateQuantity } from "@/lib/domain/helpers";
 type Actor = { uid: string; displayName: string; color: string };
 
 export function AddItemInput({
-  householdId,
   listId,
   actor,
 }: {
-  householdId: string;
   listId: string;
   actor: Actor;
 }) {
@@ -33,7 +31,6 @@ export function AddItemInput({
     try {
       await addItem({
         db: getDb(),
-        householdId,
         listId,
         actor,
         name,

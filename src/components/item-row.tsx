@@ -10,23 +10,23 @@ import type { ItemDoc } from "@/lib/domain/types";
 type Actor = { uid: string; displayName: string; color: string };
 
 export function ItemRow({
-  householdId,
   listId,
   item,
   actor,
   canDelete,
+  readOnly,
 }: {
-  householdId: string;
   listId: string;
   item: ItemDoc;
   actor: Actor;
   canDelete: boolean;
+  readOnly?: boolean;
 }) {
   async function onToggle() {
+    if (readOnly) return;
     try {
       await toggleItem({
         db: getDb(),
-        householdId,
         listId,
         actor,
         itemId: item.id,
@@ -39,10 +39,10 @@ export function ItemRow({
 
   async function onDelete(e: React.MouseEvent) {
     e.stopPropagation();
+    if (readOnly) return;
     try {
       await deleteItem({
         db: getDb(),
-        householdId,
         listId,
         actor,
         itemId: item.id,
@@ -54,12 +54,17 @@ export function ItemRow({
 
   return (
     <div
-      className="group flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 transition hover:bg-muted/40"
+      className={
+        "group flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 transition " +
+        (readOnly ? "" : "cursor-pointer hover:bg-muted/40")
+      }
       onClick={onToggle}
       role="checkbox"
       aria-checked={item.checked}
-      tabIndex={0}
+      aria-disabled={readOnly}
+      tabIndex={readOnly ? -1 : 0}
       onKeyDown={(e) => {
+        if (readOnly) return;
         if (e.key === " " || e.key === "Enter") {
           e.preventDefault();
           void onToggle();
@@ -96,7 +101,7 @@ export function ItemRow({
         }
         aria-hidden
       />
-      {canDelete ? (
+      {canDelete && !readOnly ? (
         <Button
           size="icon-sm"
           variant="ghost"

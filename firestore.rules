@@ -12,39 +12,38 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    function householdExists(householdId) {
-      return exists(/databases/$(database)/documents/households/$(householdId));
+    function listExists(listId) {
+      return exists(/databases/$(database)/documents/lists/$(listId));
     }
 
-    function householdData(householdId) {
-      return get(/databases/$(database)/documents/households/$(householdId)).data;
+    function listData(listId) {
+      return get(/databases/$(database)/documents/lists/$(listId)).data;
     }
 
-    function isMember(householdId) {
+    function isMember(listId) {
       return isSignedIn()
-        && householdExists(householdId)
-        && request.auth.uid in householdData(householdId).memberIds;
+        && listExists(listId)
+        && request.auth.uid in listData(listId).memberIds;
     }
 
-    function isOwner(householdId) {
+    function isOwner(listId) {
       return isSignedIn()
-        && householdExists(householdId)
-        && householdData(householdId).createdBy == request.auth.uid;
+        && listExists(listId)
+        && listData(listId).createdBy == request.auth.uid;
     }
 
-    // Membership check that also sees documents created earlier in the same
-    // batch/transaction. Used by create rules for subcollections under a
-    // household that's being created atomically in the same write (e.g. the
-    // initial active list inside createHousehold's writeBatch).
-    function isMemberAfter(householdId) {
+    // Membership check that sees docs written earlier in the same batch;
+    // used by create rules for subcollections under a list being created
+    // atomically (e.g. the initial owner member doc inside createList).
+    function isMemberAfter(listId) {
       return isSignedIn()
-        && existsAfter(/databases/$(database)/documents/households/$(householdId))
-        && request.auth.uid in getAfter(/databases/$(database)/documents/households/$(householdId)).data.memberIds;
+        && existsAfter(/databases/$(database)/documents/lists/$(listId))
+        && request.auth.uid in getAfter(/databases/$(database)/documents/lists/$(listId)).data.memberIds;
     }
 
-    function inviteMapsTo(code, householdId) {
+    function inviteMapsTo(code, listId) {
       return exists(/databases/$(database)/documents/inviteCodes/$(code))
-        && get(/databases/$(database)/documents/inviteCodes/$(code)).data.householdId == householdId;
+        && get(/databases/$(database)/documents/inviteCodes/$(code)).data.listId == listId;
     }
 
     function onlyFieldsChanged(allowed) {
@@ -67,16 +66,16 @@ service cloud.firestore {
       allow create: if isSelf(uid)
         && request.resource.data.uid == uid
         && request.resource.data.plan == 'free'
-        && request.resource.data.householdIds is list
-        && request.resource.data.householdIds.size() == 0
+        && request.resource.data.listIds is list
+        && request.resource.data.listIds.size() == 0
         && request.resource.data.email is string
         && request.resource.data.displayName is string;
 
       allow update: if isSelf(uid)
         && request.resource.data.uid == uid
         && request.resource.data.plan == resource.data.plan
-        && request.resource.data.householdIds is list
-        && request.resource.data.householdIds.size() <= 50;
+        && request.resource.data.listIds is list
+        && request.resource.data.listIds.size() <= 100;
 
       allow delete: if false;
     }
@@ -88,19 +87,19 @@ service cloud.firestore {
       allow list: if false;
       allow create: if isSignedIn()
         && request.resource.data.code == code
-        && request.resource.data.householdId is string;
+        && request.resource.data.listId is string;
       allow update: if false;
       allow delete: if isSignedIn();
     }
 
-    // ---------- households ----------
+    // ---------- lists ----------
 
-    match /households/{householdId} {
+    match /lists/{listId} {
       allow get: if isSignedIn()
         && request.auth.uid in resource.data.memberIds;
-      // Firestore evaluates list queries per-result against `allow get`, so
-      // allowing list for authenticated callers is safe: any query whose
-      // result set could include a doc failing the get rule is rejected.
+      // Firestore enforces allow get per matched doc for list queries, so
+      // we can expose listing to all authenticated users — the memberIds
+      // array-contains filter on the client limits the result set.
       allow list: if isSignedIn();
 
       allow create: if isSignedIn()
@@ -112,7 +111,8 @@ service cloud.firestore {
         && request.resource.data.name.size() >= 1
         && request.resource.data.name.size() <= 60
         && request.resource.data.inviteCode is string
-        && request.resource.data.activeListId is string;
+        && request.resource.data.status == 'active'
+        && request.resource.data.itemCount == 0;
 
       allow update: if
         request.resource.data.createdBy == resource.data.createdBy
@@ -120,7 +120,7 @@ service cloud.firestore {
         && request.resource.data.memberIds.size() <= 20
         && (
           // Case 1: existing member updating fields.
-          isMember(householdId)
+          isMember(listId)
           // Case 2: non-member joining via invite — adds exactly their own uid.
           || (
             isSignedIn()
@@ -128,9 +128,23 @@ service cloud.firestore {
             && request.resource.data.memberIds.hasAll(resource.data.memberIds)
             && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
             && request.auth.uid in request.resource.data.memberIds
-            && inviteMapsTo(request.resource.data.inviteCode, householdId)
+            && inviteMapsTo(request.resource.data.inviteCode, listId)
             && onlyFieldsChanged(['memberIds'])
           )
+        )
+        && (
+          // Status transitions: active → closed only; stay same otherwise.
+          request.resource.data.status == resource.data.status
+          || (
+            resource.data.status == 'active'
+            && request.resource.data.status == 'closed'
+          )
+        )
+        && (
+          // Item count shifts by ±1 or stays put.
+          request.resource.data.itemCount == resource.data.itemCount + 1
+          || request.resource.data.itemCount == resource.data.itemCount - 1
+          || request.resource.data.itemCount == resource.data.itemCount
         );
 
       allow delete: if isSignedIn()
@@ -139,10 +153,9 @@ service cloud.firestore {
       // ---------- members ----------
 
       match /members/{memberUid} {
-        // Reads are gated at the household level: knowing a household's 20-char
-        // random doc id is already effectively a capability. Skipping the
-        // cross-doc lookup here sidesteps the SDK's listener-vs-rules race
-        // that surfaces right after createHousehold's batch commit.
+        // Knowing the random 20-char list id is already the capability; we
+        // don't need a cross-doc isMember check for reads (also keeps list
+        // rules fast and avoids races against the parent list commit).
         allow read: if isSignedIn();
 
         allow create: if isSelf(memberUid)
@@ -157,73 +170,42 @@ service cloud.firestore {
             && onlyFieldsChanged(['displayName', 'color'])
           )
           || (
-            isOwner(householdId)
+            isOwner(listId)
             && onlyFieldsChanged(['role'])
             && request.resource.data.role in ['owner', 'member']
           );
 
-        allow delete: if isSelf(memberUid) || isOwner(householdId);
+        allow delete: if isSelf(memberUid) || isOwner(listId);
       }
 
-      // ---------- lists ----------
+      // ---------- items ----------
 
-      match /lists/{listId} {
+      match /items/{itemId} {
         allow read: if isSignedIn();
 
-        allow create: if isMemberAfter(householdId)
-          && request.resource.data.status == 'active'
-          && request.resource.data.title is string
-          && request.resource.data.title.size() >= 1
-          && request.resource.data.title.size() <= 80
-          && request.resource.data.itemCount == 0;
+        allow create: if isMember(listId)
+          && request.resource.data.addedBy == request.auth.uid
+          && request.resource.data.checked == false
+          && isValidItemName(request.resource.data.name)
+          && isValidQuantity(request.resource.data.quantity)
+          && listData(listId).status == 'active'
+          && listData(listId).itemCount < 200;
 
-        allow update: if isMember(householdId)
+        allow update: if isMember(listId)
+          && onlyFieldsChanged(['checked', 'checkedBy'])
+          && request.resource.data.checked is bool
           && (
-            (
-              resource.data.status == 'active'
-              && request.resource.data.status == 'closed'
-            )
-            || (
-              request.resource.data.status == resource.data.status
-            )
-          )
-          && (
-            request.resource.data.itemCount == resource.data.itemCount + 1
-            || request.resource.data.itemCount == resource.data.itemCount - 1
-            || request.resource.data.itemCount == resource.data.itemCount
+            (request.resource.data.checked == true
+              && request.resource.data.checkedBy == request.auth.uid)
+            || (request.resource.data.checked == false
+              && request.resource.data.checkedBy == null)
           );
 
-        allow delete: if isMember(householdId);
-
-        // ---------- items ----------
-
-        match /items/{itemId} {
-          allow read: if isSignedIn();
-
-          allow create: if isMember(householdId)
-            && request.resource.data.addedBy == request.auth.uid
-            && request.resource.data.checked == false
-            && isValidItemName(request.resource.data.name)
-            && isValidQuantity(request.resource.data.quantity)
-            && get(/databases/$(database)/documents/households/$(householdId)/lists/$(listId)).data.status == 'active'
-            && get(/databases/$(database)/documents/households/$(householdId)/lists/$(listId)).data.itemCount < 200;
-
-          allow update: if isMember(householdId)
-            && onlyFieldsChanged(['checked', 'checkedBy'])
-            && request.resource.data.checked is bool
-            && (
-              (request.resource.data.checked == true
-                && request.resource.data.checkedBy == request.auth.uid)
-              || (request.resource.data.checked == false
-                && request.resource.data.checkedBy == null)
-            );
-
-          allow delete: if isMember(householdId)
-            && (
-              resource.data.addedBy == request.auth.uid
-              || isOwner(householdId)
-            );
-        }
+        allow delete: if isMember(listId)
+          && (
+            resource.data.addedBy == request.auth.uid
+            || isOwner(listId)
+          );
       }
     }
   }

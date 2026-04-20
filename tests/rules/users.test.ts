@@ -10,7 +10,7 @@ describe("users rules", () => {
   beforeEach(reset);
   afterAll(closeTestEnv);
 
-  it("user can create their own users/{uid} with plan=free", async () => {
+  it("user can create their own users/{uid} with plan=free and empty listIds", async () => {
     const env = await getTestEnv();
     const ctx = env.authenticatedContext("alice");
     await assertSucceeds(
@@ -19,7 +19,7 @@ describe("users rules", () => {
         email: "a@b.c",
         displayName: "Ana",
         plan: "free",
-        householdIds: [],
+        listIds: [],
         createdAt: new Date(),
       }),
     );
@@ -34,7 +34,7 @@ describe("users rules", () => {
         email: "b@c.d",
         displayName: "Bob",
         plan: "free",
-        householdIds: [],
+        listIds: [],
         createdAt: new Date(),
       }),
     );
@@ -49,7 +49,7 @@ describe("users rules", () => {
         email: "a@b.c",
         displayName: "Ana",
         plan: "pro",
-        householdIds: [],
+        listIds: [],
         createdAt: new Date(),
       }),
     );
@@ -63,7 +63,7 @@ describe("users rules", () => {
         email: "b@c.d",
         displayName: "Bob",
         plan: "free",
-        householdIds: [],
+        listIds: [],
         createdAt: new Date(),
       });
     });
@@ -79,7 +79,7 @@ describe("users rules", () => {
         email: "a@b.c",
         displayName: "Ana",
         plan: "free",
-        householdIds: [],
+        listIds: [],
         createdAt: new Date(),
       });
     });
@@ -98,7 +98,7 @@ describe("users rules", () => {
         email: "",
         displayName: "",
         plan: "free",
-        householdIds: [],
+        listIds: [],
         createdAt: new Date(),
       }),
     );

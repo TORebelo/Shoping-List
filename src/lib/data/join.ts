@@ -7,21 +7,21 @@ import {
   serverTimestamp,
   type Firestore,
 } from "firebase/firestore";
-import type { HouseholdDoc, MemberDoc } from "@/lib/domain/types";
+import type { ListDoc, MemberDoc } from "@/lib/domain/types";
 import { pickNextColor } from "@/lib/domain/helpers";
 
-export async function findHouseholdByCode(
+export async function findListByCode(
   db: Firestore,
   code: string,
-): Promise<HouseholdDoc | null> {
+): Promise<ListDoc | null> {
   const inviteRef = doc(db, "inviteCodes", code);
   const inviteSnap = await getDoc(inviteRef);
   if (!inviteSnap.exists()) return null;
-  const { householdId } = inviteSnap.data() as { householdId: string };
-  const hhRef = doc(db, "households", householdId);
-  const hhSnap = await getDoc(hhRef);
-  if (!hhSnap.exists()) return null;
-  return hhSnap.data() as HouseholdDoc;
+  const { listId } = inviteSnap.data() as { listId: string };
+  const listRef = doc(db, "lists", listId);
+  const listSnap = await getDoc(listRef);
+  if (!listSnap.exists()) return null;
+  return listSnap.data() as ListDoc;
 }
 
 type JoinInput = {
@@ -31,11 +31,11 @@ type JoinInput = {
 };
 
 type JoinResult = {
-  householdId: string;
+  listId: string;
   alreadyMember: boolean;
 };
 
-export async function joinHousehold(input: JoinInput): Promise<JoinResult> {
+export async function joinList(input: JoinInput): Promise<JoinResult> {
   const { db, code, user } = input;
   return runTransaction(db, async (tx) => {
     const inviteRef = doc(db, "inviteCodes", code);
@@ -43,25 +43,22 @@ export async function joinHousehold(input: JoinInput): Promise<JoinResult> {
     if (!inviteSnap.exists()) {
       throw new Error("Código de convite inválido.");
     }
-    const { householdId } = inviteSnap.data() as { householdId: string };
+    const { listId } = inviteSnap.data() as { listId: string };
 
-    const hhRef = doc(db, "households", householdId);
-    const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) {
+    const listRef = doc(db, "lists", listId);
+    const listSnap = await tx.get(listRef);
+    if (!listSnap.exists()) {
       throw new Error("A lista já não existe.");
     }
-    const hh = hhSnap.data() as HouseholdDoc;
+    const list = listSnap.data() as ListDoc;
 
-    if (hh.memberIds.includes(user.uid)) {
-      return { householdId, alreadyMember: true };
+    if (list.memberIds.includes(user.uid)) {
+      return { listId, alreadyMember: true };
     }
 
-    // Members collection lookup for taken colors.
-    const membersCol = collection(db, "households", householdId, "members");
-    // We cannot query inside a transaction; infer taken colors from a read on
-    // each existing member. In practice member count ≤ 20 so this scales.
+    const membersCol = collection(db, "lists", listId, "members");
     const takenColors: string[] = [];
-    for (const uid of hh.memberIds) {
+    for (const uid of list.memberIds) {
       const snap = await tx.get(doc(membersCol, uid));
       if (snap.exists()) {
         takenColors.push((snap.data() as MemberDoc).color);
@@ -69,7 +66,7 @@ export async function joinHousehold(input: JoinInput): Promise<JoinResult> {
     }
     const color = pickNextColor(takenColors);
 
-    tx.update(hhRef, {
+    tx.update(listRef, {
       memberIds: arrayUnion(user.uid),
     });
     tx.set(doc(membersCol, user.uid), {
@@ -80,9 +77,9 @@ export async function joinHousehold(input: JoinInput): Promise<JoinResult> {
       joinedAt: serverTimestamp(),
     });
     tx.update(doc(db, "users", user.uid), {
-      householdIds: arrayUnion(householdId),
+      listIds: arrayUnion(listId),
     });
 
-    return { householdId, alreadyMember: false };
+    return { listId, alreadyMember: false };
   });
 }

@@ -16,7 +16,6 @@ type Actor = {
 
 type Ctx = {
   db: Firestore;
-  householdId: string;
   listId: string;
   actor: Actor;
 };
@@ -37,17 +36,10 @@ export async function addItem(input: AddInput): Promise<AddResult> {
     throw new Error("A quantidade deve ter no máximo 20 caracteres.");
   }
 
-  const { db, householdId, listId, actor } = input;
-  const itemsCol = collection(
-    db,
-    "households",
-    householdId,
-    "lists",
-    listId,
-    "items",
-  );
+  const { db, listId, actor } = input;
+  const itemsCol = collection(db, "lists", listId, "items");
   const itemRef = doc(itemsCol);
-  const listRef = doc(db, "households", householdId, "lists", listId);
+  const listRef = doc(db, "lists", listId);
 
   const batch = writeBatch(db);
   batch.set(itemRef, {
@@ -73,16 +65,8 @@ type ToggleInput = Ctx & {
 };
 
 export async function toggleItem(input: ToggleInput): Promise<void> {
-  const { db, householdId, listId, actor, itemId, nextChecked } = input;
-  const itemRef = doc(
-    db,
-    "households",
-    householdId,
-    "lists",
-    listId,
-    "items",
-    itemId,
-  );
+  const { db, listId, actor, itemId, nextChecked } = input;
+  const itemRef = doc(db, "lists", listId, "items", itemId);
   const batch = writeBatch(db);
   batch.update(itemRef, {
     checked: nextChecked,
@@ -94,17 +78,9 @@ export async function toggleItem(input: ToggleInput): Promise<void> {
 type DeleteInput = Ctx & { itemId: string };
 
 export async function deleteItem(input: DeleteInput): Promise<void> {
-  const { db, householdId, listId, itemId } = input;
-  const itemRef = doc(
-    db,
-    "households",
-    householdId,
-    "lists",
-    listId,
-    "items",
-    itemId,
-  );
-  const listRef = doc(db, "households", householdId, "lists", listId);
+  const { db, listId, itemId } = input;
+  const itemRef = doc(db, "lists", listId, "items", itemId);
+  const listRef = doc(db, "lists", listId);
   const batch = writeBatch(db);
   batch.delete(itemRef);
   batch.update(listRef, { itemCount: increment(-1) });
