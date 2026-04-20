@@ -108,7 +108,7 @@ export default function SettingsPage() {
           </Button>
         </div>
         <p className="text-muted-foreground text-xs">
-          Este nome aparece como valor predefinido nas casas onde és membro.
+          Este nome aparece como valor predefinido nas listas onde és membro.
         </p>
       </section>
 

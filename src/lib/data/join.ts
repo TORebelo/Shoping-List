@@ -48,7 +48,7 @@ export async function joinHousehold(input: JoinInput): Promise<JoinResult> {
     const hhRef = doc(db, "households", householdId);
     const hhSnap = await tx.get(hhRef);
     if (!hhSnap.exists()) {
-      throw new Error("A casa já não existe.");
+      throw new Error("A lista já não existe.");
     }
     const hh = hhSnap.data() as HouseholdDoc;
 

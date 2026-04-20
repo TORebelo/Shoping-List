@@ -59,7 +59,7 @@ export default function DashboardPage() {
       </header>
 
       {hhLoading ? (
-        <p className="text-muted-foreground text-sm">A carregar casas…</p>
+        <p className="text-muted-foreground text-sm">A carregar listas…</p>
       ) : households.length === 0 ? (
         <EmptyState owner={ownerIdentity} />
       ) : (
@@ -80,7 +80,7 @@ function EmptyState({
 }) {
   return (
     <div className="border-border flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center">
-      <h2 className="text-lg font-medium">Ainda não tens nenhuma casa</h2>
+      <h2 className="text-lg font-medium">Ainda não tens nenhuma lista</h2>
       <p className="text-muted-foreground text-sm">
         Cria uma lista partilhada e convida família ou amigos.
       </p>

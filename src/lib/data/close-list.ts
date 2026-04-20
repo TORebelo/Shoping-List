@@ -22,11 +22,11 @@ export async function closeActiveList(input: Input): Promise<Result> {
   return runTransaction(db, async (tx) => {
     const hhRef = doc(db, "households", householdId);
     const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A casa não existe.");
+    if (!hhSnap.exists()) throw new Error("A lista não existe.");
     const hh = hhSnap.data() as HouseholdDoc;
 
     if (!hh.memberIds.includes(actor.uid)) {
-      throw new Error("Tens de ser membro da casa.");
+      throw new Error("Tens de ser membro da lista.");
     }
 
     const activeListRef = doc(

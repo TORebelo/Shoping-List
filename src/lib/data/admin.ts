@@ -21,11 +21,11 @@ export async function leaveHousehold(input: LeaveInput): Promise<void> {
   const solo = await runTransaction(db, async (tx) => {
     const hhRef = doc(db, "households", householdId);
     const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A casa não existe.");
+    if (!hhSnap.exists()) throw new Error("A lista não existe.");
     const hh = hhSnap.data() as HouseholdDoc;
 
     if (!hh.memberIds.includes(uid)) {
-      throw new Error("Não és membro desta casa.");
+      throw new Error("Não és membro desta lista.");
     }
 
     const memberRef = doc(db, "households", householdId, "members", uid);
@@ -78,13 +78,13 @@ export async function removeMember(input: RemoveInput): Promise<void> {
   await runTransaction(db, async (tx) => {
     const hhRef = doc(db, "households", householdId);
     const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A casa não existe.");
+    if (!hhSnap.exists()) throw new Error("A lista não existe.");
     const hh = hhSnap.data() as HouseholdDoc;
     if (hh.createdBy !== actor.uid) {
       throw new Error("Apenas o dono pode remover membros.");
     }
     if (!hh.memberIds.includes(uidToRemove)) {
-      throw new Error("Esse utilizador não faz parte da casa.");
+      throw new Error("Esse utilizador não faz parte da lista.");
     }
     tx.update(hhRef, { memberIds: arrayRemove(uidToRemove) });
     tx.delete(doc(db, "households", householdId, "members", uidToRemove));
@@ -106,10 +106,10 @@ export async function deleteHousehold(input: DeleteInput): Promise<void> {
   const { inviteCode, memberIds } = await runTransaction(db, async (tx) => {
     const hhRef = doc(db, "households", householdId);
     const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A casa não existe.");
+    if (!hhSnap.exists()) throw new Error("A lista não existe.");
     const hh = hhSnap.data() as HouseholdDoc;
     if (hh.createdBy !== actor.uid) {
-      throw new Error("Apenas o dono pode apagar a casa.");
+      throw new Error("Apenas o dono pode apagar a lista.");
     }
     tx.delete(hhRef);
     if (hh.inviteCode) {

@@ -47,7 +47,7 @@ export default function HouseholdPage({
   if (!hhLoading && household && !myMember) {
     return (
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-        <p>Não és membro desta casa.</p>
+        <p>Não és membro desta lista.</p>
         <Link
           href="/dashboard"
           className={buttonVariants({ variant: "outline" })}

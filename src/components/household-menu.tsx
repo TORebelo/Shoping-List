@@ -51,7 +51,7 @@ export function HouseholdMenu({
         householdId,
         uid: actor.uid,
       });
-      toast.success("Saíste da casa.");
+      toast.success("Saíste da lista.");
       router.replace("/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
@@ -72,7 +72,7 @@ export function HouseholdMenu({
         householdId,
         actor,
       });
-      toast.success("Casa apagada.");
+      toast.success("Lista apagada.");
       router.replace("/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
@@ -91,14 +91,14 @@ export function HouseholdMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setMode("leave")}>
-            Sair da casa
+            Sair da lista
           </DropdownMenuItem>
           {isOwner ? (
             <DropdownMenuItem
               variant="destructive"
               onClick={() => setMode("delete")}
             >
-              Apagar casa
+              Apagar lista
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuContent>
@@ -112,8 +112,8 @@ export function HouseholdMenu({
           <DialogHeader>
             <DialogTitle>Sair de {householdName}?</DialogTitle>
             <DialogDescription>
-              Deixarás de ver esta lista e os seus itens. Podes voltar a juntar-te
-              com o código de convite.
+              Deixarás de ver esta lista partilhada e o seu histórico. Podes
+              voltar a juntar-te com o código de convite.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -142,8 +142,8 @@ export function HouseholdMenu({
           <DialogHeader>
             <DialogTitle>Apagar {householdName}?</DialogTitle>
             <DialogDescription>
-              Esta ação apaga a casa, todas as listas e o histórico para todos
-              os membros. Não é possível desfazer.
+              Esta ação apaga a lista e todo o histórico para todos os
+              membros. Não é possível desfazer.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
