@@ -7,7 +7,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     globals: true,
-    exclude: ["node_modules", "tests/e2e/**"],
+    exclude: ["node_modules", "tests/e2e/**", "tests/rules/**"],
     env: {
       NEXT_PUBLIC_FIREBASE_API_KEY: "demo-api-key",
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: "shopinglist-dev.firebaseapp.com",

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:rules": "vitest run --config vitest.rules.config.ts",
     "emulator": "firebase emulators:start --only auth,firestore"
   },
   "dependencies": {
