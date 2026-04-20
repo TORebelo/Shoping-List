@@ -6,6 +6,7 @@ import { use, useEffect } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddItemInput } from "@/components/add-item-input";
+import { InviteDialog } from "@/components/invite-dialog";
 import { ItemRow } from "@/components/item-row";
 import { MemberAvatars } from "@/components/member-avatars";
 import { useActiveList } from "@/lib/data/use-active-list";
@@ -86,13 +87,21 @@ export default function HouseholdPage({
             </p>
           </div>
         </div>
-        <MemberAvatars
-          members={members.map((m) => ({
-            uid: m.uid,
-            displayName: m.displayName,
-            color: m.color,
-          }))}
-        />
+        <div className="flex items-center gap-3">
+          <MemberAvatars
+            members={members.map((m) => ({
+              uid: m.uid,
+              displayName: m.displayName,
+              color: m.color,
+            }))}
+          />
+          <InviteDialog
+            householdId={id}
+            inviteCode={household.inviteCode}
+            isOwner={isOwner}
+            actor={{ uid: user.uid }}
+          />
+        </div>
       </header>
 
       <Tabs defaultValue="active" className="gap-4">
