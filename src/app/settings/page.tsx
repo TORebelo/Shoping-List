@@ -32,13 +32,19 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!user) return;
     const ref = doc(getDb(), "users", user.uid);
-    return onSnapshot(ref, (snap) => {
-      const data = snap.exists() ? (snap.data() as UserDoc) : null;
-      setUserDoc(data);
-      if (data && displayName === "") {
-        setDisplayName(data.displayName);
-      }
-    });
+    return onSnapshot(
+      ref,
+      (snap) => {
+        const data = snap.exists() ? (snap.data() as UserDoc) : null;
+        setUserDoc(data);
+        if (data && displayName === "") {
+          setDisplayName(data.displayName);
+        }
+      },
+      (err) => {
+        console.warn("[settings] user doc subscription error", err);
+      },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 

@@ -49,46 +49,76 @@ export function useActiveList(
     let itemsUnsub: (() => void) | null = null;
     let currentListId: string | null = null;
 
-    const listsUnsub = onSnapshot(listsQuery, (snap) => {
-      const first = snap.docs[0];
-      const list = first ? (first.data() as ListDoc) : null;
-      setCache((prev) => ({
-        ...prev,
-        householdId,
-        list,
-        listLoaded: true,
-        items: list && list.id === currentListId ? prev.items : EMPTY_ITEMS,
-        itemsLoaded: list ? (list.id === currentListId ? prev.itemsLoaded : false) : true,
-      }));
-
-      if (!list) {
-        currentListId = null;
-        if (itemsUnsub) {
-          itemsUnsub();
-          itemsUnsub = null;
-        }
-        return;
-      }
-
-      if (list.id === currentListId) return;
-      currentListId = list.id;
-      if (itemsUnsub) itemsUnsub();
-      const itemsQuery = query(
-        collection(db, "households", householdId, "lists", list.id, "items"),
-        orderBy("createdAt", "asc"),
-      );
-      itemsUnsub = onSnapshot(itemsQuery, (itemsSnap) => {
-        const items = itemsSnap.docs.map(
-          (d: QueryDocumentSnapshot) => d.data() as ItemDoc,
-        );
+    const listsUnsub = onSnapshot(
+      listsQuery,
+      (snap) => {
+        const first = snap.docs[0];
+        const list = first ? (first.data() as ListDoc) : null;
         setCache((prev) => ({
           ...prev,
           householdId,
-          items,
+          list,
+          listLoaded: true,
+          items: list && list.id === currentListId ? prev.items : EMPTY_ITEMS,
+          itemsLoaded: list
+            ? list.id === currentListId
+              ? prev.itemsLoaded
+              : false
+            : true,
+        }));
+
+        if (!list) {
+          currentListId = null;
+          if (itemsUnsub) {
+            itemsUnsub();
+            itemsUnsub = null;
+          }
+          return;
+        }
+
+        if (list.id === currentListId) return;
+        currentListId = list.id;
+        if (itemsUnsub) itemsUnsub();
+        const itemsQuery = query(
+          collection(db, "households", householdId, "lists", list.id, "items"),
+          orderBy("createdAt", "asc"),
+        );
+        itemsUnsub = onSnapshot(
+          itemsQuery,
+          (itemsSnap) => {
+            const items = itemsSnap.docs.map(
+              (d: QueryDocumentSnapshot) => d.data() as ItemDoc,
+            );
+            setCache((prev) => ({
+              ...prev,
+              householdId,
+              items,
+              itemsLoaded: true,
+            }));
+          },
+          (err) => {
+            console.warn("[useActiveList] items subscription error", err);
+            setCache((prev) => ({
+              ...prev,
+              householdId,
+              items: EMPTY_ITEMS,
+              itemsLoaded: true,
+            }));
+          },
+        );
+      },
+      (err) => {
+        console.warn("[useActiveList] lists subscription error", err);
+        setCache((prev) => ({
+          ...prev,
+          householdId,
+          list: null,
+          listLoaded: true,
+          items: EMPTY_ITEMS,
           itemsLoaded: true,
         }));
-      });
-    });
+      },
+    );
 
     return () => {
       listsUnsub();

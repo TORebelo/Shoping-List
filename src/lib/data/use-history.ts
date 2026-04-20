@@ -38,10 +38,17 @@ export function useHistory(householdId: string | null): UseHistoryResult {
       where("status", "==", "closed"),
       orderBy("closedAt", "desc"),
     );
-    return onSnapshot(q, (snap) => {
-      const lists = snap.docs.map((d) => d.data() as ListDoc);
-      setCache({ householdId, lists, loaded: true });
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        const lists = snap.docs.map((d) => d.data() as ListDoc);
+        setCache({ householdId, lists, loaded: true });
+      },
+      (err) => {
+        console.warn("[useHistory] subscription error", err);
+        setCache({ householdId, lists: EMPTY, loaded: true });
+      },
+    );
   }, [householdId]);
 
   const fresh = cache.householdId === householdId;

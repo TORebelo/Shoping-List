@@ -8,6 +8,8 @@ import {
   type Firestore,
   connectFirestoreEmulator,
   getFirestore,
+  initializeFirestore,
+  memoryLocalCache,
 } from "firebase/firestore";
 
 const config = {
@@ -17,6 +19,8 @@ const config = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+const useEmulators = process.env.NEXT_PUBLIC_USE_EMULATORS === "true";
 
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
@@ -30,16 +34,22 @@ export function getFirebaseApp(): FirebaseApp {
 
 export function getDb(): Firestore {
   if (db) return db;
-  db = getFirestore(getFirebaseApp());
-  if (
-    process.env.NEXT_PUBLIC_USE_EMULATORS === "true" &&
-    typeof window !== "undefined"
-  ) {
+  const firebaseApp = getFirebaseApp();
+  if (useEmulators && typeof window !== "undefined") {
+    // Memory-only cache against the emulator: IndexedDB persistence survives
+    // emulator restarts and rules edits in stale state, which trips an
+    // "Unexpected state" internal assertion in the SDK. A fresh in-memory
+    // cache per page load avoids that entirely for local development.
+    db = initializeFirestore(firebaseApp, {
+      localCache: memoryLocalCache(),
+    });
     try {
       connectFirestoreEmulator(db, "127.0.0.1", 8080);
     } catch {
       /* already connected */
     }
+  } else {
+    db = getFirestore(firebaseApp);
   }
   return db;
 }
@@ -47,10 +57,7 @@ export function getDb(): Firestore {
 export function getAuthClient(): Auth {
   if (auth) return auth;
   auth = getAuth(getFirebaseApp());
-  if (
-    process.env.NEXT_PUBLIC_USE_EMULATORS === "true" &&
-    typeof window !== "undefined"
-  ) {
+  if (useEmulators && typeof window !== "undefined") {
     try {
       connectAuthEmulator(auth, "http://127.0.0.1:9099", {
         disableWarnings: true,

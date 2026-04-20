@@ -39,12 +39,19 @@ export function useHouseholds(uid: string | null): UseHouseholdsResult {
       where("memberIds", "array-contains", uid),
       orderBy("createdAt", "desc"),
     );
-    return onSnapshot(q, (snap) => {
-      const households = snap.docs.map(
-        (d: QueryDocumentSnapshot) => d.data() as HouseholdDoc,
-      );
-      setCache({ uid, households, loaded: true });
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        const households = snap.docs.map(
+          (d: QueryDocumentSnapshot) => d.data() as HouseholdDoc,
+        );
+        setCache({ uid, households, loaded: true });
+      },
+      (err) => {
+        console.warn("[useHouseholds] subscription error", err);
+        setCache({ uid, households: EMPTY, loaded: true });
+      },
+    );
   }, [uid]);
 
   const fresh = cache.uid === uid && cache.loaded;
