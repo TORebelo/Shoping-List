@@ -68,7 +68,7 @@ export function InviteDialog({
         <DialogHeader>
           <DialogTitle>Convidar membros</DialogTitle>
           <DialogDescription>
-            Partilha este link. Quem o abrir junta-se à casa após iniciar
+            Partilha este link. Quem o abrir junta-se à lista após iniciar
             sessão.
           </DialogDescription>
         </DialogHeader>

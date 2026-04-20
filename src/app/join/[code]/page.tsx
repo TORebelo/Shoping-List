@@ -40,9 +40,9 @@ export default function JoinPage({
         });
         if (cancelled) return;
         if (result.alreadyMember) {
-          toast.info("Já fazes parte desta casa.");
+          toast.info("Já fazes parte desta lista.");
         } else {
-          toast.success("Entraste na casa!");
+          toast.success("Entraste na lista!");
         }
         router.replace(`/h/${result.householdId}`);
       } catch (err) {
@@ -68,7 +68,7 @@ export default function JoinPage({
           </Link>
         </>
       ) : (
-        <p className="text-muted-foreground text-sm">A juntar à casa…</p>
+        <p className="text-muted-foreground text-sm">A juntar à lista…</p>
       )}
     </main>
   );

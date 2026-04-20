@@ -40,12 +40,12 @@ export function CreateHouseholdDialog({
         owner,
         name,
       });
-      toast.success(`Casa "${name.trim()}" criada.`);
+      toast.success(`Lista "${name.trim()}" criada.`);
       setOpen(false);
       setName("");
       router.push(`/h/${result.householdId}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao criar casa");
+      toast.error(err instanceof Error ? err.message : "Erro ao criar lista");
     } finally {
       setSubmitting(false);
     }
@@ -54,13 +54,13 @@ export function CreateHouseholdDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={trigger ? undefined : <Button />}>
-        {trigger ?? "Criar casa"}
+        {trigger ?? "Criar lista"}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Criar lista partilhada</DialogTitle>
           <DialogDescription>
-            Dá um nome à tua casa. Podes partilhar o link com a família depois.
+            Dá um nome à tua lista. Podes partilhar o link com a família depois.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -69,7 +69,7 @@ export function CreateHouseholdDialog({
             id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Casa dos Silva"
+            placeholder="Compras da semana"
             autoFocus
             maxLength={60}
             required

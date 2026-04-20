@@ -21,7 +21,7 @@ export async function rotateInviteCode(input: Input): Promise<string> {
   const oldCode = await runTransaction(db, async (tx) => {
     const hhRef = doc(db, "households", householdId);
     const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A casa não existe.");
+    if (!hhSnap.exists()) throw new Error("A lista não existe.");
     const hh = hhSnap.data() as HouseholdDoc;
     if (hh.createdBy !== actor.uid) {
       throw new Error("Apenas o dono pode regenerar o código.");

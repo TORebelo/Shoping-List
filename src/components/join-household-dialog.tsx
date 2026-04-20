@@ -37,7 +37,7 @@ export function JoinHouseholdDialog({ trigger }: { trigger?: React.ReactNode }) 
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Entrar numa casa</DialogTitle>
+          <DialogTitle>Entrar numa lista</DialogTitle>
           <DialogDescription>
             Insere o código de convite que recebeste.
           </DialogDescription>

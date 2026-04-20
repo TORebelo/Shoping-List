@@ -29,7 +29,7 @@ type CreateResult = {
 export async function createHousehold(input: CreateInput): Promise<CreateResult> {
   const name = input.name.trim();
   if (name.length < 1 || name.length > 60) {
-    throw new Error("O nome da casa deve ter entre 1 e 60 caracteres.");
+    throw new Error("O nome da lista deve ter entre 1 e 60 caracteres.");
   }
 
   const { db, owner } = input;
