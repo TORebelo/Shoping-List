@@ -1,13 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { signOut } from "firebase/auth";
-import { Button } from "@/components/ui/button";
+import { SettingsIcon } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { HouseholdCard } from "@/components/household-card";
 import { CreateHouseholdDialog } from "@/components/create-household-dialog";
 import { JoinHouseholdDialog } from "@/components/join-household-dialog";
-import { getAuthClient } from "@/lib/firebase/client";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
 import { useHouseholds } from "@/lib/data/use-households";
 
@@ -43,15 +44,17 @@ export default function DashboardPage() {
             Olá, {user.displayName ?? user.email}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <JoinHouseholdDialog />
           <CreateHouseholdDialog owner={ownerIdentity} />
-          <Button
-            variant="ghost"
-            onClick={() => signOut(getAuthClient()).then(() => router.replace("/"))}
+          <ThemeToggle />
+          <Link
+            href="/settings"
+            className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+            aria-label="Definições"
           >
-            Terminar sessão
-          </Button>
+            <SettingsIcon />
+          </Link>
         </div>
       </header>
 
