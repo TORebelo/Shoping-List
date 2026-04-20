@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddItemInput } from "@/components/add-item-input";
 import { CloseListDialog } from "@/components/close-list-dialog";
+import { HouseholdMenu } from "@/components/household-menu";
 import { InviteDialog } from "@/components/invite-dialog";
 import { ItemRow } from "@/components/item-row";
 import { MemberAvatars } from "@/components/member-avatars";
@@ -101,6 +102,12 @@ export default function HouseholdPage({
           <InviteDialog
             householdId={id}
             inviteCode={household.inviteCode}
+            isOwner={isOwner}
+            actor={{ uid: user.uid }}
+          />
+          <HouseholdMenu
+            householdId={id}
+            householdName={household.name}
             isOwner={isOwner}
             actor={{ uid: user.uid }}
           />
