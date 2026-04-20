@@ -6,7 +6,7 @@ import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/context";
-import { joinHousehold } from "@/lib/data/join";
+import { joinList } from "@/lib/data/join";
 import { getDb } from "@/lib/firebase/client";
 
 export default function JoinPage({
@@ -30,7 +30,7 @@ export default function JoinPage({
     let cancelled = false;
     (async () => {
       try {
-        const result = await joinHousehold({
+        const result = await joinList({
           db: getDb(),
           code,
           user: {
@@ -44,7 +44,7 @@ export default function JoinPage({
         } else {
           toast.success("Entraste na lista!");
         }
-        router.replace(`/h/${result.householdId}`);
+        router.replace(`/l/${result.listId}`);
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Erro ao entrar");

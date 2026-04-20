@@ -52,7 +52,7 @@ describe("ensureUserDoc", () => {
       email: "a@b.c",
       displayName: "Ana",
       photoURL: "https://img/a.png",
-      householdIds: [],
+      listIds: [],
       plan: "free",
     });
     expect(data.createdAt).toEqual({ __ts: true });

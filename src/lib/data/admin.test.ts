@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   ops: [] as { op: string; path: string; data?: unknown }[],
-  household: null as null | {
+  list: null as null | {
     id: string;
     createdBy: string;
     memberIds: string[];
@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
     __path: parts.join("/"),
   })),
   arrayRemove: vi.fn((...items: unknown[]) => ({ __arrayRemove: items })),
-  getDocs: vi.fn(async () => ({ docs: [] })),
+  getDocs: vi.fn(async () => ({ docs: [], empty: true })),
   query: vi.fn((ref: unknown) => ref),
   where: vi.fn((f: string, op: string, v: unknown) => ({ __w: [f, op, v] })),
   runTransaction: vi.fn(
@@ -42,18 +42,20 @@ const mocks = vi.hoisted(() => ({
       const tx = {
         get: async (ref: { __path: string }) => {
           state.ops.push({ op: "get", path: ref.__path });
-          if (ref.__path.startsWith("households/") &&
-              ref.__path.split("/").length === 2) {
-            if (!state.household) {
+          if (
+            ref.__path.startsWith("lists/") &&
+            ref.__path.split("/").length === 2
+          ) {
+            if (!state.list) {
               return { exists: () => false, data: () => undefined };
             }
             return {
               exists: () => true,
-              data: () => state.household,
+              data: () => state.list,
             };
           }
           const memberMatch = ref.__path.match(
-            /^households\/[^/]+\/members\/(.+)$/,
+            /^lists\/[^/]+\/members\/(.+)$/,
           );
           if (memberMatch) {
             const m = state.members[memberMatch[1]];
@@ -84,15 +86,15 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("firebase/firestore", () => mocks);
 
-import { deleteHousehold, leaveHousehold, removeMember } from "./admin";
+import { deleteList, leaveList, removeMember } from "./admin";
 
 const db = { __fake: "db" } as never;
 
-describe("leaveHousehold", () => {
+describe("leaveList", () => {
   beforeEach(() => {
     state.ops = [];
-    state.household = {
-      id: "h1",
+    state.list = {
+      id: "l1",
       createdBy: "owner",
       memberIds: ["owner", "member2"],
       inviteCode: "abc",
@@ -103,45 +105,42 @@ describe("leaveHousehold", () => {
     };
   });
 
-  it("removes member from household + user doc and deletes member doc", async () => {
-    await leaveHousehold({ db, householdId: "h1", uid: "member2" });
-    const hhUpdate = state.ops.find(
-      (o) => o.op === "update" && o.path === "households/h1",
+  it("removes member from list + user doc and deletes member doc", async () => {
+    await leaveList({ db, listId: "l1", uid: "member2" });
+    const listUpdate = state.ops.find(
+      (o) => o.op === "update" && o.path === "lists/l1",
     );
-    expect(hhUpdate!.data).toEqual({
+    expect(listUpdate!.data).toEqual({
       memberIds: { __arrayRemove: ["member2"] },
     });
     expect(
       state.ops.find(
-        (o) =>
-          o.op === "delete" &&
-          o.path === "households/h1/members/member2",
+        (o) => o.op === "delete" && o.path === "lists/l1/members/member2",
       ),
     ).toBeDefined();
     expect(
-      state.ops.find(
-        (o) => o.op === "update" && o.path === "users/member2",
-      )!.data,
-    ).toEqual({ householdIds: { __arrayRemove: ["h1"] } });
+      state.ops.find((o) => o.op === "update" && o.path === "users/member2")!
+        .data,
+    ).toEqual({ listIds: { __arrayRemove: ["l1"] } });
   });
 
   it("refuses to leave when user is the only owner and members remain", async () => {
     await expect(
-      leaveHousehold({ db, householdId: "h1", uid: "owner" }),
+      leaveList({ db, listId: "l1", uid: "owner" }),
     ).rejects.toThrow(/ownership|dono/i);
   });
 
-  it("allows last member (no other members) to leave and deletes household", async () => {
-    state.household = {
-      id: "h1",
+  it("allows last member to leave and deletes the list", async () => {
+    state.list = {
+      id: "l1",
       createdBy: "owner",
       memberIds: ["owner"],
       inviteCode: "abc",
     };
     state.members = { owner: { uid: "owner", role: "owner" } };
-    await leaveHousehold({ db, householdId: "h1", uid: "owner" });
+    await leaveList({ db, listId: "l1", uid: "owner" });
     expect(
-      state.ops.find((o) => o.op === "delete" && o.path === "households/h1"),
+      state.ops.find((o) => o.op === "delete" && o.path === "lists/l1"),
     ).toBeDefined();
     expect(
       state.ops.find(
@@ -154,8 +153,8 @@ describe("leaveHousehold", () => {
 describe("removeMember", () => {
   beforeEach(() => {
     state.ops = [];
-    state.household = {
-      id: "h1",
+    state.list = {
+      id: "l1",
       createdBy: "owner",
       memberIds: ["owner", "member2"],
       inviteCode: "abc",
@@ -169,13 +168,13 @@ describe("removeMember", () => {
   it("owner can remove another member", async () => {
     await removeMember({
       db,
-      householdId: "h1",
+      listId: "l1",
       uidToRemove: "member2",
       actor: { uid: "owner" },
     });
     expect(
       state.ops.find(
-        (o) => o.op === "delete" && o.path === "households/h1/members/member2",
+        (o) => o.op === "delete" && o.path === "lists/l1/members/member2",
       ),
     ).toBeDefined();
   });
@@ -184,7 +183,7 @@ describe("removeMember", () => {
     await expect(
       removeMember({
         db,
-        householdId: "h1",
+        listId: "l1",
         uidToRemove: "owner",
         actor: { uid: "member2" },
       }),
@@ -195,7 +194,7 @@ describe("removeMember", () => {
     await expect(
       removeMember({
         db,
-        householdId: "h1",
+        listId: "l1",
         uidToRemove: "owner",
         actor: { uid: "owner" },
       }),
@@ -203,11 +202,11 @@ describe("removeMember", () => {
   });
 });
 
-describe("deleteHousehold", () => {
+describe("deleteList", () => {
   beforeEach(() => {
     state.ops = [];
-    state.household = {
-      id: "h1",
+    state.list = {
+      id: "l1",
       createdBy: "owner",
       memberIds: ["owner"],
       inviteCode: "abc",
@@ -217,14 +216,14 @@ describe("deleteHousehold", () => {
     };
   });
 
-  it("only owner can delete, removes household + invite mapping", async () => {
-    await deleteHousehold({
+  it("only owner can delete, removes list + invite mapping", async () => {
+    await deleteList({
       db,
-      householdId: "h1",
+      listId: "l1",
       actor: { uid: "owner" },
     });
     expect(
-      state.ops.find((o) => o.op === "delete" && o.path === "households/h1"),
+      state.ops.find((o) => o.op === "delete" && o.path === "lists/l1"),
     ).toBeDefined();
     expect(
       state.ops.find(
@@ -235,9 +234,9 @@ describe("deleteHousehold", () => {
 
   it("non-owner cannot delete", async () => {
     await expect(
-      deleteHousehold({
+      deleteList({
         db,
-        householdId: "h1",
+        listId: "l1",
         actor: { uid: "someone-else" },
       }),
     ).rejects.toThrow(/dono/i);

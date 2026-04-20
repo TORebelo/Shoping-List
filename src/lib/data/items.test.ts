@@ -63,7 +63,6 @@ import { addItem, deleteItem, toggleItem } from "./items";
 
 const ctx = {
   db: { __fake: "db" } as never,
-  householdId: "h1",
   listId: "l1",
   actor: {
     uid: "u1",
@@ -105,7 +104,7 @@ describe("addItem", () => {
     expect(data.createdAt).toEqual({ __ts: true });
 
     const listUpdate = state.ops.find(
-      (o) => o.op === "update" && o.ref.__path === "households/h1/lists/l1",
+      (o) => o.op === "update" && o.ref.__path === "lists/l1",
     );
     expect(listUpdate).toBeDefined();
     expect(listUpdate!.data).toEqual({ itemCount: { __increment: 1 } });
@@ -141,7 +140,7 @@ describe("toggleItem", () => {
     const update = state.ops.find(
       (o) =>
         o.op === "update" &&
-        o.ref.__path === "households/h1/lists/l1/items/item-1",
+        o.ref.__path === "lists/l1/items/item-1",
     );
     expect(update).toBeDefined();
     expect(update!.data).toEqual({ checked: true, checkedBy: "u1" });
@@ -152,7 +151,7 @@ describe("toggleItem", () => {
     const update = state.ops.find(
       (o) =>
         o.op === "update" &&
-        o.ref.__path === "households/h1/lists/l1/items/item-1",
+        o.ref.__path === "lists/l1/items/item-1",
     );
     expect(update!.data).toEqual({ checked: false, checkedBy: null });
   });
@@ -169,11 +168,11 @@ describe("deleteItem", () => {
     const del = state.ops.find(
       (o) =>
         o.op === "delete" &&
-        o.ref.__path === "households/h1/lists/l1/items/item-1",
+        o.ref.__path === "lists/l1/items/item-1",
     );
     expect(del).toBeDefined();
     const listUpdate = state.ops.find(
-      (o) => o.op === "update" && o.ref.__path === "households/h1/lists/l1",
+      (o) => o.op === "update" && o.ref.__path === "lists/l1",
     );
     expect(listUpdate!.data).toEqual({ itemCount: { __increment: -1 } });
   });

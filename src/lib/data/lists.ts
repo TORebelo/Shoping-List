@@ -6,11 +6,7 @@ import {
   writeBatch,
   type Firestore,
 } from "firebase/firestore";
-import {
-  defaultListTitle,
-  generateInviteCode,
-  pickNextColor,
-} from "@/lib/domain/helpers";
+import { generateInviteCode, pickNextColor } from "@/lib/domain/helpers";
 
 type Owner = { uid: string; displayName: string };
 
@@ -20,28 +16,20 @@ type CreateInput = {
   name: string;
 };
 
-type CreateResult = {
-  householdId: string;
-  listId: string;
-  inviteCode: string;
-};
+type CreateResult = { listId: string; inviteCode: string };
 
-export async function createHousehold(input: CreateInput): Promise<CreateResult> {
+export async function createList(input: CreateInput): Promise<CreateResult> {
   const name = input.name.trim();
   if (name.length < 1 || name.length > 60) {
     throw new Error("O nome da lista deve ter entre 1 e 60 caracteres.");
   }
 
   const { db, owner } = input;
-  const householdsCol = collection(db, "households");
-  const householdRef = doc(householdsCol);
-  const householdId = householdRef.id;
-
-  const listsCol = collection(db, "households", householdId, "lists");
+  const listsCol = collection(db, "lists");
   const listRef = doc(listsCol);
   const listId = listRef.id;
 
-  const memberRef = doc(db, "households", householdId, "members", owner.uid);
+  const memberRef = doc(db, "lists", listId, "members", owner.uid);
   const userRef = doc(db, "users", owner.uid);
   const inviteCode = generateInviteCode();
   const inviteRef = doc(db, "inviteCodes", inviteCode);
@@ -49,13 +37,14 @@ export async function createHousehold(input: CreateInput): Promise<CreateResult>
   const batch = writeBatch(db);
   const now = serverTimestamp();
 
-  batch.set(householdRef, {
-    id: householdId,
+  batch.set(listRef, {
+    id: listId,
     name,
     createdBy: owner.uid,
     memberIds: [owner.uid],
     inviteCode,
-    activeListId: listId,
+    status: "active",
+    itemCount: 0,
     createdAt: now,
   });
 
@@ -67,25 +56,17 @@ export async function createHousehold(input: CreateInput): Promise<CreateResult>
     joinedAt: now,
   });
 
-  batch.set(listRef, {
-    id: listId,
-    title: defaultListTitle(new Date()),
-    status: "active",
-    itemCount: 0,
-    createdAt: now,
-  });
-
   batch.set(inviteRef, {
     code: inviteCode,
-    householdId,
+    listId,
     createdAt: now,
   });
 
   batch.update(userRef, {
-    householdIds: arrayUnion(householdId),
+    listIds: arrayUnion(listId),
   });
 
   await batch.commit();
 
-  return { householdId, listId, inviteCode };
+  return { listId, inviteCode };
 }

@@ -36,13 +36,19 @@ export function getDb(): Firestore {
   if (db) return db;
   const firebaseApp = getFirebaseApp();
   if (useEmulators && typeof window !== "undefined") {
-    // Memory-only cache against the emulator: IndexedDB persistence survives
-    // emulator restarts and rules edits in stale state, which trips an
-    // "Unexpected state" internal assertion in the SDK. A fresh in-memory
-    // cache per page load avoids that entirely for local development.
-    db = initializeFirestore(firebaseApp, {
-      localCache: memoryLocalCache(),
-    });
+    try {
+      db = initializeFirestore(firebaseApp, {
+        localCache: memoryLocalCache(),
+        experimentalAutoDetectLongPolling: true,
+        experimentalLongPollingOptions: { timeoutSeconds: 30 },
+      });
+    } catch (err) {
+      console.warn(
+        "[firebase/client] initializeFirestore failed; falling back to getFirestore",
+        err,
+      );
+      db = getFirestore(firebaseApp);
+    }
     try {
       connectFirestoreEmulator(db, "127.0.0.1", 8080);
     } catch {

@@ -7,20 +7,24 @@ export type UserDoc = {
   email: string;
   displayName: string;
   photoURL?: string;
-  householdIds: string[];
+  listIds: string[];
   plan: Plan;
   planExpiresAt?: Timestamp | null;
   createdAt: Timestamp;
 };
 
-export type HouseholdDoc = {
+export type ListStatus = "active" | "closed";
+
+export type ListDoc = {
   id: string;
   name: string;
   createdBy: string;
   memberIds: string[];
   inviteCode: string;
-  activeListId: string;
+  status: ListStatus;
+  itemCount: number;
   createdAt: Timestamp;
+  closedAt?: Timestamp | null;
 };
 
 export type MemberRole = "owner" | "member";
@@ -31,16 +35,6 @@ export type MemberDoc = {
   color: string;
   role: MemberRole;
   joinedAt: Timestamp;
-};
-
-export type ListStatus = "active" | "closed";
-
-export type ListDoc = {
-  id: string;
-  title: string;
-  status: ListStatus;
-  createdAt: Timestamp;
-  closedAt?: Timestamp | null;
 };
 
 export type ItemDoc = {

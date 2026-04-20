@@ -41,7 +41,7 @@ describe("AuthProvider", () => {
     expect(screen.getByTestId("out").textContent).toBe("L");
   });
 
-  it("transitions loading → user when auth emits a user", async () => {
+  it("transitions loading → user when auth emits a user (after ensureUserDoc)", async () => {
     render(
       <AuthProvider>
         <Probe />
@@ -50,14 +50,17 @@ describe("AuthProvider", () => {
     const { __emit } = (await import(
       "firebase/auth"
     )) as unknown as FirebaseAuthMock;
-    act(() =>
+    await act(async () => {
       __emit({
         uid: "u1",
         email: "a@b.c",
         displayName: "A",
         photoURL: null,
-      }),
-    );
+      });
+      // flush the microtask from ensureUserDoc's resolved promise
+      await Promise.resolve();
+      await Promise.resolve();
+    });
     expect(screen.getByTestId("out").textContent).toBe("u1");
   });
 

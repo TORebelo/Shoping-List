@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreVerticalIcon } from "lucide-react";
+import { CheckCircle2Icon, MoreVerticalIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -18,23 +18,27 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { deleteHousehold, leaveHousehold } from "@/lib/data/admin";
+import { deleteList, leaveList } from "@/lib/data/admin";
+import { closeList } from "@/lib/data/close-list";
 import { getDb } from "@/lib/firebase/client";
 
-type Mode = null | "leave" | "delete";
+type Mode = null | "close" | "leave" | "delete";
 
-export function HouseholdMenu({
-  householdId,
-  householdName,
+export function ListMenu({
+  listId,
+  listName,
+  listStatus,
   isOwner,
   actor,
 }: {
-  householdId: string;
-  householdName: string;
+  listId: string;
+  listName: string;
+  listStatus: "active" | "closed";
   isOwner: boolean;
   actor: { uid: string };
 }) {
@@ -43,14 +47,23 @@ export function HouseholdMenu({
   const [confirmName, setConfirmName] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  async function onClose() {
+    setSubmitting(true);
+    try {
+      await closeList({ db: getDb(), listId, actor });
+      toast.success("Lista fechada.");
+      setMode(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function onLeave() {
     setSubmitting(true);
     try {
-      await leaveHousehold({
-        db: getDb(),
-        householdId,
-        uid: actor.uid,
-      });
+      await leaveList({ db: getDb(), listId, uid: actor.uid });
       toast.success("Saíste da lista.");
       router.replace("/dashboard");
     } catch (err) {
@@ -61,17 +74,13 @@ export function HouseholdMenu({
   }
 
   async function onDelete() {
-    if (confirmName !== householdName) {
+    if (confirmName !== listName) {
       toast.error("O nome não coincide.");
       return;
     }
     setSubmitting(true);
     try {
-      await deleteHousehold({
-        db: getDb(),
-        householdId,
-        actor,
-      });
+      await deleteList({ db: getDb(), listId, actor });
       toast.success("Lista apagada.");
       router.replace("/dashboard");
     } catch (err) {
@@ -90,19 +99,50 @@ export function HouseholdMenu({
           <MoreVerticalIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {listStatus === "active" ? (
+            <DropdownMenuItem onClick={() => setMode("close")}>
+              <CheckCircle2Icon /> Fechar lista
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onClick={() => setMode("leave")}>
             Sair da lista
           </DropdownMenuItem>
           {isOwner ? (
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => setMode("delete")}
-            >
-              Apagar lista
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setMode("delete")}
+              >
+                Apagar lista
+              </DropdownMenuItem>
+            </>
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <Dialog
+        open={mode === "close"}
+        onOpenChange={(o) => setMode(o ? "close" : null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fechar {listName}?</DialogTitle>
+            <DialogDescription>
+              A lista fica read-only e aparece no dashboard como fechada. Cria
+              uma nova lista quando quiseres começar outra ida às compras.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose render={<Button variant="outline" />}>
+              Cancelar
+            </DialogClose>
+            <Button onClick={onClose} disabled={submitting}>
+              {submitting ? "A fechar…" : "Fechar lista"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={mode === "leave"}
@@ -110,10 +150,10 @@ export function HouseholdMenu({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sair de {householdName}?</DialogTitle>
+            <DialogTitle>Sair de {listName}?</DialogTitle>
             <DialogDescription>
-              Deixarás de ver esta lista partilhada e o seu histórico. Podes
-              voltar a juntar-te com o código de convite.
+              Deixarás de ver esta lista. Podes voltar a juntar-te com o código
+              de convite.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -140,15 +180,15 @@ export function HouseholdMenu({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Apagar {householdName}?</DialogTitle>
+            <DialogTitle>Apagar {listName}?</DialogTitle>
             <DialogDescription>
-              Esta ação apaga a lista e todo o histórico para todos os
+              Esta ação apaga a lista e todos os seus itens para todos os
               membros. Não é possível desfazer.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="confirm-name">
-              Escreve <strong>{householdName}</strong> para confirmar.
+              Escreve <strong>{listName}</strong> para confirmar.
             </Label>
             <Input
               id="confirm-name"
@@ -163,9 +203,9 @@ export function HouseholdMenu({
             <Button
               variant="destructive"
               onClick={onDelete}
-              disabled={submitting || confirmName !== householdName}
+              disabled={submitting || confirmName !== listName}
             >
-              {submitting ? "A apagar…" : "Apagar definitivamente"}
+              {submitting ? "A apagar…" : "Apagar"}
             </Button>
           </DialogFooter>
         </DialogContent>

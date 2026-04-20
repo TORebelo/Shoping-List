@@ -2,15 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { SettingsIcon } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { HouseholdCard } from "@/components/household-card";
-import { CreateHouseholdDialog } from "@/components/create-household-dialog";
-import { JoinHouseholdDialog } from "@/components/join-household-dialog";
+import { ListCard } from "@/components/list-card";
+import { CreateListDialog } from "@/components/create-list-dialog";
+import { JoinListDialog } from "@/components/join-list-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth/context";
-import { useHouseholds } from "@/lib/data/use-households";
+import { useLists } from "@/lib/data/use-lists";
+import type { ListDoc } from "@/lib/domain/types";
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -20,7 +21,14 @@ export default function DashboardPage() {
     if (!authLoading && !user) router.replace("/signin");
   }, [authLoading, user, router]);
 
-  const { households, loading: hhLoading } = useHouseholds(user?.uid ?? null);
+  const { lists, loading } = useLists(user?.uid ?? null);
+
+  const { active, closed } = useMemo(() => {
+    const a: ListDoc[] = [];
+    const c: ListDoc[] = [];
+    for (const l of lists) (l.status === "active" ? a : c).push(l);
+    return { active: a, closed: c };
+  }, [lists]);
 
   if (authLoading || !user) {
     return (
@@ -39,14 +47,16 @@ export default function DashboardPage() {
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">As tuas listas</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            As tuas listas
+          </h1>
           <p className="text-muted-foreground text-sm">
             Olá, {user.displayName ?? user.email}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <JoinHouseholdDialog />
-          <CreateHouseholdDialog owner={ownerIdentity} />
+          <JoinListDialog />
+          <CreateListDialog owner={ownerIdentity} />
           <ThemeToggle />
           <Link
             href="/settings"
@@ -58,15 +68,36 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {hhLoading ? (
+      {loading ? (
         <p className="text-muted-foreground text-sm">A carregar listas…</p>
-      ) : households.length === 0 ? (
+      ) : lists.length === 0 ? (
         <EmptyState owner={ownerIdentity} />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {households.map((h) => (
-            <HouseholdCard key={h.id} household={h} />
-          ))}
+        <div className="space-y-6">
+          {active.length > 0 ? (
+            <section className="space-y-3">
+              <h2 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                Ativas
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {active.map((l) => (
+                  <ListCard key={l.id} list={l} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+          {closed.length > 0 ? (
+            <section className="space-y-3">
+              <h2 className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                Fechadas
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {closed.map((l) => (
+                  <ListCard key={l.id} list={l} />
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       )}
     </main>
@@ -82,12 +113,9 @@ function EmptyState({
     <div className="border-border flex flex-col items-center gap-3 rounded-xl border border-dashed p-10 text-center">
       <h2 className="text-lg font-medium">Ainda não tens nenhuma lista</h2>
       <p className="text-muted-foreground text-sm">
-        Cria uma lista partilhada e convida família ou amigos.
+        Cria a primeira e convida família ou amigos.
       </p>
-      <CreateHouseholdDialog
-        owner={owner}
-        trigger="Criar lista partilhada"
-      />
+      <CreateListDialog owner={owner} trigger="Criar lista" />
     </div>
   );
 }

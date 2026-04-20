@@ -8,50 +8,50 @@ import {
   writeBatch,
   type Firestore,
 } from "firebase/firestore";
-import type { HouseholdDoc, MemberDoc } from "@/lib/domain/types";
+import type { ListDoc, MemberDoc } from "@/lib/domain/types";
 
 type LeaveInput = {
   db: Firestore;
-  householdId: string;
+  listId: string;
   uid: string;
 };
 
-export async function leaveHousehold(input: LeaveInput): Promise<void> {
-  const { db, householdId, uid } = input;
+export async function leaveList(input: LeaveInput): Promise<void> {
+  const { db, listId, uid } = input;
   const solo = await runTransaction(db, async (tx) => {
-    const hhRef = doc(db, "households", householdId);
-    const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A lista não existe.");
-    const hh = hhSnap.data() as HouseholdDoc;
+    const listRef = doc(db, "lists", listId);
+    const listSnap = await tx.get(listRef);
+    if (!listSnap.exists()) throw new Error("A lista não existe.");
+    const list = listSnap.data() as ListDoc;
 
-    if (!hh.memberIds.includes(uid)) {
+    if (!list.memberIds.includes(uid)) {
       throw new Error("Não és membro desta lista.");
     }
 
-    const memberRef = doc(db, "households", householdId, "members", uid);
+    const memberRef = doc(db, "lists", listId, "members", uid);
     const memberSnap = await tx.get(memberRef);
     if (!memberSnap.exists()) throw new Error("Membro não encontrado.");
     const member = memberSnap.data() as MemberDoc;
 
-    const otherMembers = hh.memberIds.filter((id) => id !== uid);
+    const otherMembers = list.memberIds.filter((id) => id !== uid);
     if (
       member.role === "owner" &&
       otherMembers.length > 0 &&
-      hh.createdBy === uid
+      list.createdBy === uid
     ) {
       throw new Error("Transfere a ownership antes de saíres.");
     }
 
-    tx.update(hhRef, { memberIds: arrayRemove(uid) });
+    tx.update(listRef, { memberIds: arrayRemove(uid) });
     tx.delete(memberRef);
     tx.update(doc(db, "users", uid), {
-      householdIds: arrayRemove(householdId),
+      listIds: arrayRemove(listId),
     });
 
     if (otherMembers.length === 0) {
-      tx.delete(hhRef);
-      if (hh.inviteCode) {
-        tx.delete(doc(db, "inviteCodes", hh.inviteCode));
+      tx.delete(listRef);
+      if (list.inviteCode) {
+        tx.delete(doc(db, "inviteCodes", list.inviteCode));
       }
       return { soloDelete: true };
     }
@@ -59,105 +59,84 @@ export async function leaveHousehold(input: LeaveInput): Promise<void> {
   });
 
   if (solo.soloDelete) {
-    await cascadeDeleteSubcollections(db, householdId).catch(() => {});
+    await cascadeDeleteItems(db, listId).catch(() => {});
   }
 }
 
 type RemoveInput = {
   db: Firestore;
-  householdId: string;
+  listId: string;
   uidToRemove: string;
   actor: { uid: string };
 };
 
 export async function removeMember(input: RemoveInput): Promise<void> {
-  const { db, householdId, uidToRemove, actor } = input;
+  const { db, listId, uidToRemove, actor } = input;
   if (uidToRemove === actor.uid) {
     throw new Error("Usa 'sair' para te removeres a ti mesmo.");
   }
   await runTransaction(db, async (tx) => {
-    const hhRef = doc(db, "households", householdId);
-    const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A lista não existe.");
-    const hh = hhSnap.data() as HouseholdDoc;
-    if (hh.createdBy !== actor.uid) {
+    const listRef = doc(db, "lists", listId);
+    const listSnap = await tx.get(listRef);
+    if (!listSnap.exists()) throw new Error("A lista não existe.");
+    const list = listSnap.data() as ListDoc;
+    if (list.createdBy !== actor.uid) {
       throw new Error("Apenas o dono pode remover membros.");
     }
-    if (!hh.memberIds.includes(uidToRemove)) {
+    if (!list.memberIds.includes(uidToRemove)) {
       throw new Error("Esse utilizador não faz parte da lista.");
     }
-    tx.update(hhRef, { memberIds: arrayRemove(uidToRemove) });
-    tx.delete(doc(db, "households", householdId, "members", uidToRemove));
+    tx.update(listRef, { memberIds: arrayRemove(uidToRemove) });
+    tx.delete(doc(db, "lists", listId, "members", uidToRemove));
     tx.update(doc(db, "users", uidToRemove), {
-      householdIds: arrayRemove(householdId),
+      listIds: arrayRemove(listId),
     });
   });
 }
 
 type DeleteInput = {
   db: Firestore;
-  householdId: string;
+  listId: string;
   actor: { uid: string };
 };
 
-export async function deleteHousehold(input: DeleteInput): Promise<void> {
-  const { db, householdId, actor } = input;
+export async function deleteList(input: DeleteInput): Promise<void> {
+  const { db, listId, actor } = input;
 
-  const { inviteCode, memberIds } = await runTransaction(db, async (tx) => {
-    const hhRef = doc(db, "households", householdId);
-    const hhSnap = await tx.get(hhRef);
-    if (!hhSnap.exists()) throw new Error("A lista não existe.");
-    const hh = hhSnap.data() as HouseholdDoc;
-    if (hh.createdBy !== actor.uid) {
+  await runTransaction(db, async (tx) => {
+    const listRef = doc(db, "lists", listId);
+    const listSnap = await tx.get(listRef);
+    if (!listSnap.exists()) throw new Error("A lista não existe.");
+    const list = listSnap.data() as ListDoc;
+    if (list.createdBy !== actor.uid) {
       throw new Error("Apenas o dono pode apagar a lista.");
     }
-    tx.delete(hhRef);
-    if (hh.inviteCode) {
-      tx.delete(doc(db, "inviteCodes", hh.inviteCode));
+    tx.delete(listRef);
+    if (list.inviteCode) {
+      tx.delete(doc(db, "inviteCodes", list.inviteCode));
     }
-    for (const uid of hh.memberIds) {
+    for (const uid of list.memberIds) {
       tx.update(doc(db, "users", uid), {
-        householdIds: arrayRemove(householdId),
+        listIds: arrayRemove(listId),
       });
-      tx.delete(doc(db, "households", householdId, "members", uid));
+      tx.delete(doc(db, "lists", listId, "members", uid));
     }
-    return { inviteCode: hh.inviteCode, memberIds: hh.memberIds };
   });
 
-  // Best-effort cleanup of lists + items. Cascade delete across subcollections
-  // isn't first-class in Firestore without Cloud Functions; we do as much as
-  // we can on the client and tolerate partial failures (docs orphaned under a
-  // deleted parent are unreachable via rules and inert).
-  await cascadeDeleteSubcollections(db, householdId).catch(() => {});
-  void inviteCode;
-  void memberIds;
+  await cascadeDeleteItems(db, listId).catch(() => {});
 }
 
-async function cascadeDeleteSubcollections(
+async function cascadeDeleteItems(
   db: Firestore,
-  householdId: string,
+  listId: string,
 ): Promise<void> {
-  const listsSnap = await getDocs(
-    query(collection(db, "households", householdId, "lists")),
+  const itemsSnap = await getDocs(
+    query(collection(db, "lists", listId, "items")),
   );
-  for (const listDoc of listsSnap.docs) {
-    const itemsSnap = await getDocs(
-      query(
-        collection(
-          db,
-          "households",
-          householdId,
-          "lists",
-          listDoc.id,
-          "items",
-        ),
-      ),
-    );
-    const batch = writeBatch(db);
-    for (const itemDoc of itemsSnap.docs) {
-      batch.delete(itemDoc.ref);
-    }
-    batch.delete(listDoc.ref);
-    await batch.commit();
+  if (itemsSnap.empty) return;
+  const batch = writeBatch(db);
+  for (const itemDoc of itemsSnap.docs) {
+    batch.delete(itemDoc.ref);
   }
+  await batch.commit();
 }

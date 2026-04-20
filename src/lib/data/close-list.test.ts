@@ -2,24 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
   ops: [] as { op: string; path: string; data?: unknown }[],
-  household: null as null | { activeListId: string; memberIds: string[] },
-  activeListExists: true,
-  nextListId: "new-list",
-  failTx: null as Error | null,
+  list: null as null | {
+    memberIds: string[];
+    status: "active" | "closed";
+  },
 }));
 
 const mocks = vi.hoisted(() => ({
-  doc: vi.fn((first: unknown, ...rest: unknown[]) => {
-    if (first && typeof first === "object" && "__path" in (first as object)) {
-      const base = (first as { __path: string }).__path;
-      if (rest.length === 0) {
-        return { __path: `${base}/${state.nextListId}`, id: state.nextListId };
-      }
-      return { __path: `${base}/${rest.join("/")}` };
-    }
-    return { __path: rest.join("/") };
-  }),
-  collection: vi.fn((_db: unknown, ...parts: string[]) => ({
+  doc: vi.fn((_db: unknown, ...parts: string[]) => ({
     __path: parts.join("/"),
   })),
   serverTimestamp: vi.fn(() => ({ __ts: true })),
@@ -32,36 +22,23 @@ const mocks = vi.hoisted(() => ({
           data: () => unknown;
         }>;
         update: (ref: { __path: string }, data: unknown) => void;
-        set: (ref: { __path: string }, data: unknown) => void;
       }) => Promise<unknown>,
     ) => {
-      if (state.failTx) throw state.failTx;
       const tx = {
         get: async (ref: { __path: string }) => {
           state.ops.push({ op: "get", path: ref.__path });
-          if (ref.__path.startsWith("households/") && ref.__path.split("/").length === 2) {
-            if (!state.household) return { exists: () => false, data: () => undefined };
-            return {
-              exists: () => true,
-              data: () => state.household,
-            };
-          }
           if (
-            ref.__path.includes("/lists/") &&
-            !ref.__path.endsWith(`/${state.nextListId}`)
+            ref.__path.startsWith("lists/") &&
+            ref.__path.split("/").length === 2
           ) {
-            return {
-              exists: () => state.activeListExists,
-              data: () => ({ id: "l-old", status: "active", title: "old" }),
-            };
+            if (!state.list)
+              return { exists: () => false, data: () => undefined };
+            return { exists: () => true, data: () => state.list };
           }
           return { exists: () => false, data: () => undefined };
         },
         update: (ref: { __path: string }, data: unknown) => {
           state.ops.push({ op: "update", path: ref.__path, data });
-        },
-        set: (ref: { __path: string }, data: unknown) => {
-          state.ops.push({ op: "set", path: ref.__path, data });
         },
       };
       return fn(tx);
@@ -71,67 +48,45 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("firebase/firestore", () => mocks);
 
-import { closeActiveList } from "./close-list";
+import { closeList } from "./close-list";
 
 const db = { __fake: "db" } as never;
 
-describe("closeActiveList", () => {
+describe("closeList", () => {
   beforeEach(() => {
     state.ops = [];
-    state.failTx = null;
-    state.activeListExists = true;
-    state.nextListId = "new-list";
-    state.household = {
-      activeListId: "l-old",
-      memberIds: ["u1"],
-    };
+    state.list = { memberIds: ["u1"], status: "active" };
   });
 
-  it("closes old list, creates new active list, updates activeListId", async () => {
-    const result = await closeActiveList({
-      db,
-      householdId: "h1",
-      actor: { uid: "u1" },
-    });
-    expect(result.newListId).toBe("new-list");
-
-    const closeUpdate = state.ops.find(
-      (o) => o.op === "update" && o.path === "households/h1/lists/l-old",
+  it("marks status=closed and stamps closedAt", async () => {
+    await closeList({ db, listId: "l1", actor: { uid: "u1" } });
+    const update = state.ops.find(
+      (o) => o.op === "update" && o.path === "lists/l1",
     );
-    expect(closeUpdate!.data).toMatchObject({
+    expect(update!.data).toEqual({
       status: "closed",
       closedAt: { __ts: true },
     });
-
-    const listSet = state.ops.find(
-      (o) => o.op === "set" && o.path === "households/h1/lists/new-list",
-    );
-    expect(listSet!.data).toMatchObject({
-      id: "new-list",
-      status: "active",
-      itemCount: 0,
-    });
-    expect((listSet!.data as Record<string, unknown>).title).toMatch(
-      /^Compras de \d{4}-\d{2}-\d{2}$/,
-    );
-
-    const hhUpdate = state.ops.find(
-      (o) => o.op === "update" && o.path === "households/h1",
-    );
-    expect(hhUpdate!.data).toEqual({ activeListId: "new-list" });
   });
 
   it("rejects non-member actors", async () => {
-    state.household = { activeListId: "l-old", memberIds: ["other"] };
+    state.list = { memberIds: ["other"], status: "active" };
     await expect(
-      closeActiveList({ db, householdId: "h1", actor: { uid: "u1" } }),
+      closeList({ db, listId: "l1", actor: { uid: "u1" } }),
     ).rejects.toThrow(/membro/i);
   });
 
-  it("throws when household missing", async () => {
-    state.household = null;
+  it("rejects closing an already-closed list", async () => {
+    state.list = { memberIds: ["u1"], status: "closed" };
     await expect(
-      closeActiveList({ db, householdId: "h1", actor: { uid: "u1" } }),
+      closeList({ db, listId: "l1", actor: { uid: "u1" } }),
+    ).rejects.toThrow(/fechada/i);
+  });
+
+  it("throws when list missing", async () => {
+    state.list = null;
+    await expect(
+      closeList({ db, listId: "l1", actor: { uid: "u1" } }),
     ).rejects.toThrow();
   });
 });

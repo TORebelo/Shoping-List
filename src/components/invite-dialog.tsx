@@ -19,12 +19,12 @@ import { rotateInviteCode } from "@/lib/data/rotate-invite";
 import { getDb } from "@/lib/firebase/client";
 
 export function InviteDialog({
-  householdId,
+  listId,
   inviteCode,
   isOwner,
   actor,
 }: {
-  householdId: string;
+  listId: string;
   inviteCode: string;
   isOwner: boolean;
   actor: { uid: string };
@@ -48,7 +48,7 @@ export function InviteDialog({
   async function onRotate() {
     setRotating(true);
     try {
-      await rotateInviteCode({ db: getDb(), householdId, actor });
+      await rotateInviteCode({ db: getDb(), listId, actor });
       toast.success("Novo código gerado.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
