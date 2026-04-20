@@ -6,10 +6,12 @@ import { use, useEffect } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddItemInput } from "@/components/add-item-input";
+import { CloseListDialog } from "@/components/close-list-dialog";
 import { InviteDialog } from "@/components/invite-dialog";
 import { ItemRow } from "@/components/item-row";
 import { MemberAvatars } from "@/components/member-avatars";
 import { useActiveList } from "@/lib/data/use-active-list";
+import { useHistory } from "@/lib/data/use-history";
 import { useHousehold } from "@/lib/data/use-household";
 import { useAuth } from "@/lib/auth/context";
 
@@ -28,6 +30,7 @@ export default function HouseholdPage({
 
   const { household, members, loading: hhLoading } = useHousehold(id);
   const { list, items, loading: listLoading } = useActiveList(id);
+  const { lists: historyLists, loading: historyLoading } = useHistory(id);
 
   const myMember = user ? members.find((m) => m.uid === user.uid) : null;
   const isOwner = myMember?.role === "owner";
@@ -128,6 +131,13 @@ export default function HouseholdPage({
                 listId={list.id}
                 actor={actor}
               />
+              <div className="flex justify-end">
+                <CloseListDialog
+                  householdId={id}
+                  actor={{ uid: user.uid }}
+                  disabled={items.length === 0}
+                />
+              </div>
               {items.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   A lista está vazia. Adiciona o primeiro item.
@@ -151,9 +161,36 @@ export default function HouseholdPage({
         </TabsContent>
 
         <TabsContent value="history" className="space-y-2">
-          <p className="text-muted-foreground text-sm">
-            O histórico aparece aqui na Fase 6.
-          </p>
+          {historyLoading ? (
+            <p className="text-muted-foreground text-sm">A carregar…</p>
+          ) : historyLists.length === 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Ainda não fechaste nenhuma lista.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {historyLists.map((l) => (
+                <Link
+                  key={l.id}
+                  href={`/h/${id}/lists/${l.id}`}
+                  className="border-border hover:bg-muted/40 block rounded-lg border px-3 py-2 transition"
+                >
+                  <div className="text-sm font-medium">{l.title}</div>
+                  <div className="text-muted-foreground text-xs">
+                    {l.closedAt
+                      ? new Date(
+                          (l.closedAt as unknown as { toDate(): Date }).toDate(),
+                        ).toLocaleDateString("pt-PT", {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                        })
+                      : "Fechada"}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </main>
