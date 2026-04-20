@@ -46,16 +46,18 @@ const mocks = vi.hoisted(() => {
 // Replace `doc()` behaviour so when called with a collection ref and no id,
 // it pulls the next id from the test-controlled queue.
 mocks.doc.mockImplementation((...parts: unknown[]) => {
+  // doc(collectionRef) — auto-generated id
   if (
-    parts.length === 2 &&
-    typeof parts[1] === "object" &&
-    parts[1] &&
-    "__path" in (parts[1] as object)
+    parts.length === 1 &&
+    typeof parts[0] === "object" &&
+    parts[0] &&
+    "__path" in (parts[0] as object)
   ) {
     const id = state.nextIds.shift() ?? "auto";
-    const path = `${(parts[1] as { __path: string }).__path}/${id}`;
+    const path = `${(parts[0] as { __path: string }).__path}/${id}`;
     return { __path: path, id };
   }
+  // doc(db, ...path)
   const path = parts
     .slice(1)
     .map((p) =>

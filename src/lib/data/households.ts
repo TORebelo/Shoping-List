@@ -34,11 +34,11 @@ export async function createHousehold(input: CreateInput): Promise<CreateResult>
 
   const { db, owner } = input;
   const householdsCol = collection(db, "households");
-  const householdRef = doc(db, householdsCol);
+  const householdRef = doc(householdsCol);
   const householdId = householdRef.id;
 
   const listsCol = collection(db, "households", householdId, "lists");
-  const listRef = doc(db, listsCol);
+  const listRef = doc(listsCol);
   const listId = listRef.id;
 
   const memberRef = doc(db, "households", householdId, "members", owner.uid);

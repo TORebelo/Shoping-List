@@ -17,30 +17,39 @@ export type UseHouseholdsResult = {
   loading: boolean;
 };
 
+type Cache = {
+  uid: string | null;
+  households: HouseholdDoc[];
+  loaded: boolean;
+};
+
+const EMPTY: HouseholdDoc[] = [];
+
 export function useHouseholds(uid: string | null): UseHouseholdsResult {
-  const [households, setHouseholds] = useState<HouseholdDoc[]>([]);
-  const [loading, setLoading] = useState<boolean>(uid !== null);
+  const [cache, setCache] = useState<Cache>({
+    uid: null,
+    households: EMPTY,
+    loaded: false,
+  });
 
   useEffect(() => {
-    if (!uid) {
-      setHouseholds([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
+    if (!uid) return;
     const q = query(
       collection(getDb(), "households"),
       where("memberIds", "array-contains", uid),
       orderBy("createdAt", "desc"),
     );
     return onSnapshot(q, (snap) => {
-      const docs = snap.docs.map(
+      const households = snap.docs.map(
         (d: QueryDocumentSnapshot) => d.data() as HouseholdDoc,
       );
-      setHouseholds(docs);
-      setLoading(false);
+      setCache({ uid, households, loaded: true });
     });
   }, [uid]);
 
-  return { households, loading };
+  const fresh = cache.uid === uid && cache.loaded;
+  return {
+    households: fresh ? cache.households : EMPTY,
+    loading: uid !== null && !fresh,
+  };
 }
