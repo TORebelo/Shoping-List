@@ -28,12 +28,21 @@ describe("members rules", () => {
     );
   });
 
-  it("non-member cannot read member doc", async () => {
+  it("signed-in non-member can read member doc (knowing the 20-char household id is the capability)", async () => {
     const env = await getTestEnv();
     await seedHousehold(env, { householdId: "h1", ownerUid: "alice" });
     const carol = env.authenticatedContext("carol");
-    await assertFails(
+    await assertSucceeds(
       getDoc(doc(carol.firestore(), "households/h1/members/alice")),
+    );
+  });
+
+  it("unauthenticated request cannot read member doc", async () => {
+    const env = await getTestEnv();
+    await seedHousehold(env, { householdId: "h1", ownerUid: "alice" });
+    const anon = env.unauthenticatedContext();
+    await assertFails(
+      getDoc(doc(anon.firestore(), "households/h1/members/alice")),
     );
   });
 

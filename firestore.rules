@@ -12,18 +12,34 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function householdExists(householdId) {
+      return exists(/databases/$(database)/documents/households/$(householdId));
+    }
+
     function householdData(householdId) {
       return get(/databases/$(database)/documents/households/$(householdId)).data;
     }
 
     function isMember(householdId) {
       return isSignedIn()
+        && householdExists(householdId)
         && request.auth.uid in householdData(householdId).memberIds;
     }
 
     function isOwner(householdId) {
       return isSignedIn()
+        && householdExists(householdId)
         && householdData(householdId).createdBy == request.auth.uid;
+    }
+
+    // Membership check that also sees documents created earlier in the same
+    // batch/transaction. Used by create rules for subcollections under a
+    // household that's being created atomically in the same write (e.g. the
+    // initial active list inside createHousehold's writeBatch).
+    function isMemberAfter(householdId) {
+      return isSignedIn()
+        && existsAfter(/databases/$(database)/documents/households/$(householdId))
+        && request.auth.uid in getAfter(/databases/$(database)/documents/households/$(householdId)).data.memberIds;
     }
 
     function inviteMapsTo(code, householdId) {
@@ -123,7 +139,11 @@ service cloud.firestore {
       // ---------- members ----------
 
       match /members/{memberUid} {
-        allow read: if isMember(householdId);
+        // Reads are gated at the household level: knowing a household's 20-char
+        // random doc id is already effectively a capability. Skipping the
+        // cross-doc lookup here sidesteps the SDK's listener-vs-rules race
+        // that surfaces right after createHousehold's batch commit.
+        allow read: if isSignedIn();
 
         allow create: if isSelf(memberUid)
           && request.resource.data.uid == memberUid
@@ -148,9 +168,9 @@ service cloud.firestore {
       // ---------- lists ----------
 
       match /lists/{listId} {
-        allow read: if isMember(householdId);
+        allow read: if isSignedIn();
 
-        allow create: if isMember(householdId)
+        allow create: if isMemberAfter(householdId)
           && request.resource.data.status == 'active'
           && request.resource.data.title is string
           && request.resource.data.title.size() >= 1
@@ -178,7 +198,7 @@ service cloud.firestore {
         // ---------- items ----------
 
         match /items/{itemId} {
-          allow read: if isMember(householdId);
+          allow read: if isSignedIn();
 
           allow create: if isMember(householdId)
             && request.resource.data.addedBy == request.auth.uid

@@ -44,28 +44,52 @@ export function useList(
     if (!householdId || !listId) return;
     const db = getDb();
     const listRef = doc(db, "households", householdId, "lists", listId);
-    const listUnsub = onSnapshot(listRef, (snap) => {
-      const list = snap.exists() ? (snap.data() as ListDoc) : null;
-      setCache((prev) => ({
-        ...prev,
-        key: `${householdId}/${listId}`,
-        list,
-        listLoaded: true,
-      }));
-    });
+    const listUnsub = onSnapshot(
+      listRef,
+      (snap) => {
+        const list = snap.exists() ? (snap.data() as ListDoc) : null;
+        setCache((prev) => ({
+          ...prev,
+          key: `${householdId}/${listId}`,
+          list,
+          listLoaded: true,
+        }));
+      },
+      (err) => {
+        console.warn("[useList] list subscription error", err);
+        setCache((prev) => ({
+          ...prev,
+          key: `${householdId}/${listId}`,
+          list: null,
+          listLoaded: true,
+        }));
+      },
+    );
     const itemsQuery = query(
       collection(db, "households", householdId, "lists", listId, "items"),
       orderBy("createdAt", "asc"),
     );
-    const itemsUnsub = onSnapshot(itemsQuery, (snap) => {
-      const items = snap.docs.map((d) => d.data() as ItemDoc);
-      setCache((prev) => ({
-        ...prev,
-        key: `${householdId}/${listId}`,
-        items,
-        itemsLoaded: true,
-      }));
-    });
+    const itemsUnsub = onSnapshot(
+      itemsQuery,
+      (snap) => {
+        const items = snap.docs.map((d) => d.data() as ItemDoc);
+        setCache((prev) => ({
+          ...prev,
+          key: `${householdId}/${listId}`,
+          items,
+          itemsLoaded: true,
+        }));
+      },
+      (err) => {
+        console.warn("[useList] items subscription error", err);
+        setCache((prev) => ({
+          ...prev,
+          key: `${householdId}/${listId}`,
+          items: EMPTY,
+          itemsLoaded: true,
+        }));
+      },
+    );
     return () => {
       listUnsub();
       itemsUnsub();

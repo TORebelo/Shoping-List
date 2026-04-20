@@ -27,14 +27,21 @@ export function HouseholdCard({ household }: { household: HouseholdDoc }) {
   useEffect(() => {
     const db = getDb();
     const membersCol = collection(db, "households", household.id, "members");
-    const unsubMembers = onSnapshot(membersCol, (snap) => {
-      setMembers(
-        snap.docs.map((d) => {
-          const m = d.data() as MemberDoc;
-          return { uid: m.uid, displayName: m.displayName, color: m.color };
-        }),
-      );
-    });
+    const unsubMembers = onSnapshot(
+      membersCol,
+      (snap) => {
+        setMembers(
+          snap.docs.map((d) => {
+            const m = d.data() as MemberDoc;
+            return { uid: m.uid, displayName: m.displayName, color: m.color };
+          }),
+        );
+      },
+      (err) => {
+        console.warn("[HouseholdCard] members subscription error", err);
+        setMembers([]);
+      },
+    );
     return unsubMembers;
   }, [household.id]);
 
@@ -44,17 +51,25 @@ export function HouseholdCard({ household }: { household: HouseholdDoc }) {
       collection(db, "households", household.id, "lists"),
       where("status", "==", "active"),
     );
-    return onSnapshot(activeQuery, (snap) => {
-      const d = snap.docs[0];
-      if (!d) {
+    return onSnapshot(
+      activeQuery,
+      (snap) => {
+        const d = snap.docs[0];
+        if (!d) {
+          setActiveList(null);
+          setItemCount(0);
+          return;
+        }
+        const list = d.data() as ListDoc & { itemCount?: number };
+        setActiveList(list);
+        setItemCount(list.itemCount ?? 0);
+      },
+      (err) => {
+        console.warn("[HouseholdCard] active list subscription error", err);
         setActiveList(null);
         setItemCount(0);
-        return;
-      }
-      const list = d.data() as ListDoc & { itemCount?: number };
-      setActiveList(list);
-      setItemCount(list.itemCount ?? 0);
-    });
+      },
+    );
   }, [household.id]);
 
   return (

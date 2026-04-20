@@ -34,25 +34,49 @@ export function useHousehold(householdId: string | null): UseHouseholdResult {
     if (!householdId) return;
     const db = getDb();
     const hhRef = doc(db, "households", householdId);
-    const hhUnsub = onSnapshot(hhRef, (snap) => {
-      const household = snap.exists() ? (snap.data() as HouseholdDoc) : null;
-      setCache((prev) => ({
-        ...prev,
-        householdId,
-        household,
-        householdLoaded: true,
-      }));
-    });
+    const hhUnsub = onSnapshot(
+      hhRef,
+      (snap) => {
+        const household = snap.exists() ? (snap.data() as HouseholdDoc) : null;
+        setCache((prev) => ({
+          ...prev,
+          householdId,
+          household,
+          householdLoaded: true,
+        }));
+      },
+      (err) => {
+        console.warn("[useHousehold] household subscription error", err);
+        setCache((prev) => ({
+          ...prev,
+          householdId,
+          household: null,
+          householdLoaded: true,
+        }));
+      },
+    );
     const membersCol = collection(db, "households", householdId, "members");
-    const membersUnsub = onSnapshot(membersCol, (snap) => {
-      const members = snap.docs.map((d) => d.data() as MemberDoc);
-      setCache((prev) => ({
-        ...prev,
-        householdId,
-        members,
-        membersLoaded: true,
-      }));
-    });
+    const membersUnsub = onSnapshot(
+      membersCol,
+      (snap) => {
+        const members = snap.docs.map((d) => d.data() as MemberDoc);
+        setCache((prev) => ({
+          ...prev,
+          householdId,
+          members,
+          membersLoaded: true,
+        }));
+      },
+      (err) => {
+        console.warn("[useHousehold] members subscription error", err);
+        setCache((prev) => ({
+          ...prev,
+          householdId,
+          members: EMPTY_MEMBERS,
+          membersLoaded: true,
+        }));
+      },
+    );
     return () => {
       hhUnsub();
       membersUnsub();
