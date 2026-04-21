@@ -1,10 +1,11 @@
 "use client";
 
-import { CheckCircle2Icon, MoreVerticalIcon } from "lucide-react";
+import { CheckCircle2Icon, CopyIcon, MoreVerticalIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { CloneListDialog } from "@/components/clone-list-dialog";
 import {
   Dialog,
   DialogClose,
@@ -27,20 +28,22 @@ import { deleteList, leaveList } from "@/lib/data/admin";
 import { closeList } from "@/lib/data/close-list";
 import { getDb } from "@/lib/firebase/client";
 
-type Mode = null | "close" | "leave" | "delete";
+type Mode = null | "close" | "leave" | "delete" | "clone";
 
 export function ListMenu({
   listId,
   listName,
   listStatus,
+  itemCount,
   isOwner,
   actor,
 }: {
   listId: string;
   listName: string;
   listStatus: "active" | "closed";
+  itemCount: number;
   isOwner: boolean;
-  actor: { uid: string };
+  actor: { uid: string; displayName: string };
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(null);
@@ -104,6 +107,9 @@ export function ListMenu({
               <CheckCircle2Icon /> Fechar lista
             </DropdownMenuItem>
           ) : null}
+          <DropdownMenuItem onClick={() => setMode("clone")}>
+            <CopyIcon /> Duplicar lista
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setMode("leave")}>
             Sair da lista
           </DropdownMenuItem>
@@ -120,6 +126,15 @@ export function ListMenu({
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <CloneListDialog
+        open={mode === "clone"}
+        onOpenChange={(o) => setMode(o ? "clone" : null)}
+        sourceListId={listId}
+        sourceListName={listName}
+        itemCount={itemCount}
+        owner={{ uid: actor.uid, displayName: actor.displayName }}
+      />
 
       <Dialog
         open={mode === "close"}

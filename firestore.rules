@@ -112,7 +112,11 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 60
         && request.resource.data.inviteCode is string
         && request.resource.data.status == 'active'
-        && request.resource.data.itemCount == 0;
+        // itemCount may be seeded >0 during a clone (same-batch item writes);
+        // still capped at 200.
+        && request.resource.data.itemCount is int
+        && request.resource.data.itemCount >= 0
+        && request.resource.data.itemCount <= 200;
 
       allow update: if
         request.resource.data.createdBy == resource.data.createdBy
@@ -200,6 +204,27 @@ service cloud.firestore {
             || (request.resource.data.checked == false
               && request.resource.data.checkedBy == null)
           );
+
+        allow delete: if isMember(listId)
+          && (
+            resource.data.addedBy == request.auth.uid
+            || isOwner(listId)
+          );
+      }
+
+      // ---------- notes ----------
+
+      match /notes/{noteId} {
+        allow read: if isSignedIn();
+
+        allow create: if isMember(listId)
+          && request.resource.data.addedBy == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1
+          && request.resource.data.text.size() <= 200;
+
+        // Notes are immutable once posted; delete is how you remove.
+        allow update: if false;
 
         allow delete: if isMember(listId)
           && (

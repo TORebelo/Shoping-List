@@ -63,6 +63,8 @@ export function getDb(): Firestore {
 export function getAuthClient(): Auth {
   if (auth) return auth;
   auth = getAuth(getFirebaseApp());
+  // Localize Firebase-generated strings (error messages, email templates).
+  auth.languageCode = "pt";
   if (useEmulators && typeof window !== "undefined") {
     try {
       connectAuthEmulator(auth, "http://127.0.0.1:9099", {

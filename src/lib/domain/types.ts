@@ -49,6 +49,15 @@ export type ItemDoc = {
   createdAt: Timestamp;
 };
 
+export type NoteDoc = {
+  id: string;
+  text: string;
+  addedBy: string;
+  addedByName: string;
+  addedByColor: string;
+  createdAt: Timestamp;
+};
+
 export const COLOR_POOL = [
   "#ef4444",
   "#3b82f6",

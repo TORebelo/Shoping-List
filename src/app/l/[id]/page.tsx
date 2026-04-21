@@ -9,6 +9,7 @@ import { InviteDialog } from "@/components/invite-dialog";
 import { ItemRow } from "@/components/item-row";
 import { ListMenu } from "@/components/list-menu";
 import { MemberAvatars } from "@/components/member-avatars";
+import { NotesPanel } from "@/components/notes-panel";
 import { useAuth } from "@/lib/auth/context";
 import { useList } from "@/lib/data/use-list";
 
@@ -25,7 +26,7 @@ export default function ListPage({
     if (!authLoading && !user) router.replace("/signin");
   }, [authLoading, user, router]);
 
-  const { list, members, items, loading } = useList(id);
+  const { list, members, items, notes, loading } = useList(id);
   const myMember = user ? members.find((m) => m.uid === user.uid) : null;
   const isOwner = myMember?.role === "owner";
   const isClosed = list?.status === "closed";
@@ -111,11 +112,22 @@ export default function ListPage({
             listId={id}
             listName={list.name}
             listStatus={list.status}
+            itemCount={items.length}
             isOwner={isOwner}
-            actor={{ uid: user.uid }}
+            actor={{
+              uid: user.uid,
+              displayName: user.displayName ?? user.email ?? "Membro",
+            }}
           />
         </div>
       </header>
+
+      <NotesPanel
+        listId={id}
+        notes={notes}
+        actor={actor}
+        readOnly={isClosed}
+      />
 
       {!isClosed ? (
         <AddItemInput listId={id} actor={actor} />

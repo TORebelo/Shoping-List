@@ -16,10 +16,14 @@ export function MemberAvatars({
   return (
     <AvatarGroup>
       {members.slice(0, 4).map((m) => (
-        <Avatar key={m.uid} size={size}>
+        <Avatar
+          key={m.uid}
+          size={size}
+          title={m.displayName}
+          aria-label={m.displayName}
+        >
           <AvatarFallback
             style={{ backgroundColor: m.color, color: "white" }}
-            title={m.displayName}
           >
             {m.displayName.trim().charAt(0).toUpperCase() || "?"}
           </AvatarFallback>
