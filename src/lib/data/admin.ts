@@ -34,19 +34,31 @@ export async function leaveList(input: LeaveInput): Promise<void> {
     const member = memberSnap.data() as MemberDoc;
 
     const otherMembers = list.memberIds.filter((id) => id !== uid);
-    if (
+    const isSoleOwner =
       member.role === "owner" &&
       otherMembers.length > 0 &&
-      list.createdBy === uid
-    ) {
-      throw new Error("Transfere a ownership antes de saíres.");
+      list.createdBy === uid;
+
+    tx.update(doc(db, "users", uid), {
+      listIds: arrayRemove(listId),
+    });
+
+    if (isSoleOwner) {
+      // Auto-promote the first remaining member so the list keeps an owner.
+      const heirUid = otherMembers[0];
+      tx.update(listRef, {
+        memberIds: arrayRemove(uid),
+        createdBy: heirUid,
+      });
+      tx.update(doc(db, "lists", listId, "members", heirUid), {
+        role: "owner",
+      });
+      tx.delete(memberRef);
+      return { soloDelete: false };
     }
 
     tx.update(listRef, { memberIds: arrayRemove(uid) });
     tx.delete(memberRef);
-    tx.update(doc(db, "users", uid), {
-      listIds: arrayRemove(listId),
-    });
 
     if (otherMembers.length === 0) {
       tx.delete(listRef);
@@ -88,9 +100,8 @@ export async function removeMember(input: RemoveInput): Promise<void> {
     }
     tx.update(listRef, { memberIds: arrayRemove(uidToRemove) });
     tx.delete(doc(db, "lists", listId, "members", uidToRemove));
-    tx.update(doc(db, "users", uidToRemove), {
-      listIds: arrayRemove(listId),
-    });
+    // Rules forbid writing another user's doc; leave their cached listIds
+    // stale — harmless because membership is authoritative via memberIds.
   });
 }
 
@@ -115,10 +126,14 @@ export async function deleteList(input: DeleteInput): Promise<void> {
     if (list.inviteCode) {
       tx.delete(doc(db, "inviteCodes", list.inviteCode));
     }
+    // Only clear the actor's own users/{uid}.listIds — rules forbid writing
+    // to another user's doc. Other members end up with a stale listId in
+    // their cache, but it's harmless: their useLists query won't return the
+    // deleted list, and the UI never tries to read users.listIds directly.
+    tx.update(doc(db, "users", actor.uid), {
+      listIds: arrayRemove(listId),
+    });
     for (const uid of list.memberIds) {
-      tx.update(doc(db, "users", uid), {
-        listIds: arrayRemove(listId),
-      });
       tx.delete(doc(db, "lists", listId, "members", uid));
     }
   });

@@ -119,7 +119,16 @@ service cloud.firestore {
         && request.resource.data.itemCount <= 200;
 
       allow update: if
-        request.resource.data.createdBy == resource.data.createdBy
+        (
+          // createdBy normally stays pinned; allow transfer only when the
+          // current creator is also the caller AND the new creator is
+          // already a member (covers the leave-auto-promote path).
+          request.resource.data.createdBy == resource.data.createdBy
+          || (
+            resource.data.createdBy == request.auth.uid
+            && request.resource.data.createdBy in resource.data.memberIds
+          )
+        )
         && request.resource.data.memberIds is list
         && request.resource.data.memberIds.size() <= 20
         && (

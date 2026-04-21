@@ -124,10 +124,26 @@ describe("leaveList", () => {
     ).toEqual({ listIds: { __arrayRemove: ["l1"] } });
   });
 
-  it("refuses to leave when user is the only owner and members remain", async () => {
-    await expect(
-      leaveList({ db, listId: "l1", uid: "owner" }),
-    ).rejects.toThrow(/ownership|dono/i);
+  it("auto-promotes the first other member when sole owner leaves", async () => {
+    await leaveList({ db, listId: "l1", uid: "owner" });
+    // Old owner leaves.
+    expect(
+      state.ops.find(
+        (o) => o.op === "delete" && o.path === "lists/l1/members/owner",
+      ),
+    ).toBeDefined();
+    // New owner promoted.
+    const promotion = state.ops.find(
+      (o) =>
+        o.op === "update" && o.path === "lists/l1/members/member2",
+    );
+    expect(promotion).toBeDefined();
+    expect(promotion!.data).toEqual({ role: "owner" });
+    // List createdBy flipped.
+    const listUpdate = state.ops.find(
+      (o) => o.op === "update" && o.path === "lists/l1",
+    );
+    expect(listUpdate!.data).toMatchObject({ createdBy: "member2" });
   });
 
   it("allows last member to leave and deletes the list", async () => {
@@ -216,7 +232,7 @@ describe("deleteList", () => {
     };
   });
 
-  it("only owner can delete, removes list + invite mapping", async () => {
+  it("only owner can delete, removes list + invite mapping, updates own listIds", async () => {
     await deleteList({
       db,
       listId: "l1",
@@ -230,6 +246,12 @@ describe("deleteList", () => {
         (o) => o.op === "delete" && o.path === "inviteCodes/abc",
       ),
     ).toBeDefined();
+    // Only the actor's own listIds are updated — rules forbid writing others'.
+    const userUpdates = state.ops.filter(
+      (o) => o.op === "update" && o.path.startsWith("users/"),
+    );
+    expect(userUpdates).toHaveLength(1);
+    expect(userUpdates[0].path).toBe("users/owner");
   });
 
   it("non-owner cannot delete", async () => {
