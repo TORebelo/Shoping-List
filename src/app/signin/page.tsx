@@ -15,6 +15,9 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth/context";
 import { sendMagicLink, signInWithGoogle } from "@/lib/auth/sign-in";
 
+const EMAIL_SIGNIN_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_EMAIL_SIGNIN === "true";
+
 function GoogleGlyph() {
   return (
     <svg viewBox="0 0 48 48" aria-hidden className="size-5">
@@ -184,35 +187,39 @@ function SignInForm() {
           {pending === "google" ? "A abrir…" : "Continuar com Google"}
         </Button>
 
-        <div className="text-muted-foreground flex items-center gap-3 text-xs tracking-wider uppercase">
-          <span className="border-border h-px flex-1 border-t" />
-          ou por email
-          <span className="border-border h-px flex-1 border-t" />
-        </div>
+        {EMAIL_SIGNIN_ENABLED ? (
+          <>
+            <div className="text-muted-foreground flex items-center gap-3 text-xs tracking-wider uppercase">
+              <span className="border-border h-px flex-1 border-t" />
+              ou por email
+              <span className="border-border h-px flex-1 border-t" />
+            </div>
 
-        <form className="space-y-3" onSubmit={onEmail}>
-          <Label htmlFor="email" className="sr-only">
-            Email
-          </Label>
-          <Input
-            id="email"
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="tu@example.com"
-            className="h-10"
-          />
-          <Button
-            type="submit"
-            className="w-full"
-            size="lg"
-            disabled={pending !== null || email.length === 0}
-          >
-            {pending === "email" ? "A enviar…" : "Enviar link mágico"}
-          </Button>
-        </form>
+            <form className="space-y-3" onSubmit={onEmail}>
+              <Label htmlFor="email" className="sr-only">
+                Email
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@example.com"
+                className="h-10"
+              />
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={pending !== null || email.length === 0}
+              >
+                {pending === "email" ? "A enviar…" : "Enviar link mágico"}
+              </Button>
+            </form>
+          </>
+        ) : null}
       </div>
 
       <p className="text-muted-foreground text-center text-xs">
