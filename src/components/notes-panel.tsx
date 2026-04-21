@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addNote, deleteNote } from "@/lib/data/notes";
 import { getDb } from "@/lib/firebase/client";
+import { cn } from "@/lib/utils";
 import type { NoteDoc } from "@/lib/domain/types";
 
 type Actor = { uid: string; displayName: string; color: string };
@@ -51,39 +52,47 @@ export function NotesPanel({
 
   return (
     <section className="space-y-2">
-      <div className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+      <h2 className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-widest uppercase">
         <StickyNoteIcon className="size-3" /> Notas
-      </div>
+      </h2>
       {notes.length === 0 ? null : (
         <div className="grid gap-2 sm:grid-cols-2">
-          {notes.map((n) => (
-            <div
-              key={n.id}
-              className="group border-border bg-card relative flex items-start gap-2 rounded-lg border px-3 py-2"
-            >
-              <span
-                className="mt-1 inline-block size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: n.addedByColor }}
-                aria-hidden
-                title={n.addedByName}
-              />
-              <p className="min-w-0 flex-1 text-sm whitespace-pre-wrap">
-                {n.text}
-              </p>
-              {!readOnly &&
-              (n.addedBy === actor.uid) ? (
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  aria-label="Apagar nota"
-                  onClick={() => onRemove(n.id)}
-                  className="opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+          {notes.map((n) => {
+            const mine = n.addedBy === actor.uid;
+            return (
+              <div
+                key={n.id}
+                className={cn(
+                  "group relative flex items-start gap-2 rounded-xl px-3 py-2.5",
+                  "border border-l-4 bg-card shadow-sm",
+                )}
+                style={{
+                  borderLeftColor: n.addedByColor,
+                }}
+              >
+                <p className="min-w-0 flex-1 text-sm whitespace-pre-wrap">
+                  {n.text}
+                </p>
+                <span
+                  className="text-muted-foreground shrink-0 text-[10px] tracking-wide"
+                  title={n.addedByName}
                 >
-                  <XIcon />
-                </Button>
-              ) : null}
-            </div>
-          ))}
+                  {n.addedByName.split(" ")[0]}
+                </span>
+                {!readOnly && mine ? (
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label="Apagar nota"
+                    onClick={() => onRemove(n.id)}
+                    className="absolute right-1.5 top-1.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+                  >
+                    <XIcon />
+                  </Button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       )}
       {!readOnly ? (

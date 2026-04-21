@@ -1,10 +1,11 @@
 "use client";
 
-import { Trash2Icon } from "lucide-react";
+import { CheckIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { deleteItem, toggleItem } from "@/lib/data/items";
 import { getDb } from "@/lib/firebase/client";
+import { cn } from "@/lib/utils";
 import type { ItemDoc } from "@/lib/domain/types";
 
 type Actor = { uid: string; displayName: string; color: string };
@@ -54,14 +55,16 @@ export function ItemRow({
 
   return (
     <div
-      className={
-        "group flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 transition " +
-        (readOnly ? "" : "cursor-pointer hover:bg-muted/40")
-      }
+      className={cn(
+        "group border-border bg-card flex items-center gap-3 rounded-xl border px-3 py-3 transition",
+        !readOnly && "cursor-pointer hover:bg-muted/40 active:scale-[0.99]",
+        item.checked && "bg-muted/30",
+      )}
       onClick={onToggle}
       role="checkbox"
       aria-checked={item.checked}
       aria-disabled={readOnly}
+      aria-label={item.name}
       tabIndex={readOnly ? -1 : 0}
       onKeyDown={(e) => {
         if (readOnly) return;
@@ -72,44 +75,46 @@ export function ItemRow({
       }}
     >
       <span
-        className="inline-block size-3 shrink-0 rounded-full"
+        className="size-2.5 shrink-0 rounded-full ring-2 ring-transparent transition-[box-shadow] group-hover:ring-background"
         style={{ backgroundColor: item.addedByColor }}
         aria-hidden
+        title={item.addedByName}
       />
-      <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-baseline gap-2">
         <span
-          className={
-            item.checked
-              ? "text-muted-foreground truncate line-through"
-              : "truncate"
-          }
+          className={cn(
+            "truncate text-[0.95rem] leading-tight transition-colors",
+            item.checked && "text-muted-foreground line-through",
+          )}
         >
           {item.name}
         </span>
         {item.quantity ? (
-          <span className="text-muted-foreground shrink-0 text-xs">
+          <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
             {item.quantity}
           </span>
         ) : null}
       </div>
       <span
-        className={
-          "size-5 shrink-0 rounded border " +
-          (item.checked
-            ? "bg-primary border-primary"
-            : "border-border bg-background")
-        }
+        className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-md border transition-all",
+          item.checked
+            ? "bg-primary text-primary-foreground border-primary scale-100"
+            : "border-border bg-background scale-95 [&>svg]:opacity-0",
+        )}
         aria-hidden
-      />
+      >
+        <CheckIcon className="size-3.5" />
+      </span>
       {canDelete && !readOnly ? (
         <Button
           size="icon-sm"
           variant="ghost"
           onClick={onDelete}
-          aria-label="Apagar item"
-          className="opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+          aria-label={`Apagar ${item.name}`}
+          className="text-muted-foreground hover:text-destructive opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
         >
-          <Trash2Icon />
+          <Trash2Icon className="size-4" />
         </Button>
       ) : null}
     </div>

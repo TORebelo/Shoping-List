@@ -1,5 +1,6 @@
 "use client";
 
+import { PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,13 +30,7 @@ export function AddItemInput({
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await addItem({
-        db: getDb(),
-        listId,
-        actor,
-        name,
-        quantity,
-      });
+      await addItem({ db: getDb(), listId, actor, name, quantity });
       setName("");
       setQuantity("");
     } catch (err) {
@@ -46,26 +41,35 @@ export function AddItemInput({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-card border-border flex items-center gap-1.5 rounded-xl border p-1.5 shadow-sm focus-within:ring-2 focus-within:ring-ring/40"
+    >
       <Input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Ex: leite"
+        placeholder="Adicionar item…"
         maxLength={80}
         required
-        className="min-w-0 flex-1"
+        className="min-w-0 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
         aria-label="Nome do item"
       />
       <Input
         value={quantity}
         onChange={(e) => setQuantity(e.target.value)}
-        placeholder="qtd (opcional)"
+        placeholder="qtd"
         maxLength={20}
-        className="w-32"
+        className="w-16 shrink-0 border-0 bg-transparent text-center text-xs shadow-none focus-visible:ring-0"
         aria-label="Quantidade"
       />
-      <Button type="submit" disabled={!canSubmit}>
-        {submitting ? "…" : "Adicionar"}
+      <Button
+        type="submit"
+        size="icon"
+        disabled={!canSubmit}
+        aria-label="Adicionar item"
+        className="shrink-0"
+      >
+        <PlusIcon />
       </Button>
     </form>
   );
