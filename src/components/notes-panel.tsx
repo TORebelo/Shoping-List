@@ -40,9 +40,24 @@ export function NotesPanel({
     }
   }
 
-  async function onRemove(noteId: string) {
+  async function onRemove(note: NoteDoc) {
     try {
-      await deleteNote({ db: getDb(), listId, noteId });
+      await deleteNote({ db: getDb(), listId, noteId: note.id });
+      toast("Nota apagada", {
+        duration: 5000,
+        action: {
+          label: "Anular",
+          onClick: async () => {
+            try {
+              await addNote({ db: getDb(), listId, actor, text: note.text });
+            } catch (err) {
+              toast.error(
+                err instanceof Error ? err.message : "Erro ao restaurar",
+              );
+            }
+          },
+        },
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     }
@@ -84,7 +99,7 @@ export function NotesPanel({
                     size="icon-xs"
                     variant="ghost"
                     aria-label="Apagar nota"
-                    onClick={() => onRemove(n.id)}
+                    onClick={() => onRemove(n)}
                     className="absolute right-1.5 top-1.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
                   >
                     <XIcon />

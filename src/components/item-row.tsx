@@ -3,12 +3,14 @@
 import { CheckIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { deleteItem, toggleItem } from "@/lib/data/items";
+import { addItem, deleteItem, toggleItem } from "@/lib/data/items";
 import { getDb } from "@/lib/firebase/client";
 import { cn } from "@/lib/utils";
 import type { ItemDoc } from "@/lib/domain/types";
 
 type Actor = { uid: string; displayName: string; color: string };
+
+const UNDO_MS = 5000;
 
 export function ItemRow({
   listId,
@@ -25,13 +27,33 @@ export function ItemRow({
 }) {
   async function onToggle() {
     if (readOnly) return;
+    const wasChecked = item.checked;
     try {
       await toggleItem({
         db: getDb(),
         listId,
         actor,
         itemId: item.id,
-        nextChecked: !item.checked,
+        nextChecked: !wasChecked,
+      });
+      toast(wasChecked ? "Item desmarcado" : "Item marcado", {
+        duration: UNDO_MS,
+        action: {
+          label: "Anular",
+          onClick: async () => {
+            try {
+              await toggleItem({
+                db: getDb(),
+                listId,
+                actor,
+                itemId: item.id,
+                nextChecked: wasChecked,
+              });
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Erro ao anular");
+            }
+          },
+        },
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
@@ -41,12 +63,38 @@ export function ItemRow({
   async function onDelete(e: React.MouseEvent) {
     e.stopPropagation();
     if (readOnly) return;
+    // Snapshot the fields we need to re-create before the doc is gone.
+    const snapshot = {
+      name: item.name,
+      quantity: item.quantity,
+    };
     try {
       await deleteItem({
         db: getDb(),
         listId,
         actor,
         itemId: item.id,
+      });
+      toast(`"${snapshot.name}" apagado`, {
+        duration: UNDO_MS,
+        action: {
+          label: "Anular",
+          onClick: async () => {
+            try {
+              await addItem({
+                db: getDb(),
+                listId,
+                actor,
+                name: snapshot.name,
+                quantity: snapshot.quantity,
+              });
+            } catch (err) {
+              toast.error(
+                err instanceof Error ? err.message : "Erro ao restaurar",
+              );
+            }
+          },
+        },
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
