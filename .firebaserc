@@ -1,1 +1,6 @@
-{ "projects": { "default": "shopinglist-dev" } }
+{
+  "projects": {
+    "default": "shopinglist-dev",
+    "production": "shopinglist-8e9b8"
+  }
+}

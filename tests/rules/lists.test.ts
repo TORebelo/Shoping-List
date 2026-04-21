@@ -24,11 +24,18 @@ describe("lists rules", () => {
     await assertSucceeds(getDoc(doc(alice.firestore(), "lists/l1")));
   });
 
-  it("non-member cannot read list", async () => {
+  it("non-member (signed-in) can read the list (knowing the random id is the capability, and the join flow needs this)", async () => {
     const env = await getTestEnv();
     await seedList(env, { listId: "l1", ownerUid: "alice" });
     const bob = env.authenticatedContext("bob");
-    await assertFails(getDoc(doc(bob.firestore(), "lists/l1")));
+    await assertSucceeds(getDoc(doc(bob.firestore(), "lists/l1")));
+  });
+
+  it("unauthenticated request cannot read list", async () => {
+    const env = await getTestEnv();
+    await seedList(env, { listId: "l1", ownerUid: "alice" });
+    const anon = env.unauthenticatedContext();
+    await assertFails(getDoc(doc(anon.firestore(), "lists/l1")));
   });
 
   it("create: user can create a list they own, with themselves as only member", async () => {

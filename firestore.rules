@@ -95,11 +95,11 @@ service cloud.firestore {
     // ---------- lists ----------
 
     match /lists/{listId} {
-      allow get: if isSignedIn()
-        && request.auth.uid in resource.data.memberIds;
-      // Firestore enforces allow get per matched doc for list queries, so
-      // we can expose listing to all authenticated users — the memberIds
-      // array-contains filter on the client limits the result set.
+      // Anyone signed in can read a list document; knowing the random 20-char
+      // list id is already the capability. The join transaction needs this:
+      // a non-member invited via link has to read the list (to add themselves
+      // to memberIds) before they qualify as a member.
+      allow get: if isSignedIn();
       allow list: if isSignedIn();
 
       allow create: if isSignedIn()
