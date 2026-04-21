@@ -152,7 +152,9 @@ export default function ListPage({
         readOnly={isClosed}
       />
 
-      {!isClosed ? <AddItemInput listId={id} actor={actor} /> : null}
+      {!isClosed ? (
+        <AddItemInput listId={id} actor={actor} existingItems={items} />
+      ) : null}
 
       {items.length === 0 ? (
         <EmptyState
