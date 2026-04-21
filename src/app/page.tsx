@@ -11,20 +11,17 @@ const FEATURES = [
   {
     icon: UsersIcon,
     title: "Em tempo real",
-    description:
-      "Cada membro tem a sua cor. Itens que alguém marca aparecem a todos.",
+    description: "Cada membro com a sua cor.",
   },
   {
     icon: StickyNoteIcon,
-    title: "Notas partilhadas",
-    description:
-      "Post-its para combinar \"traz também batatas\" sem ser preciso mensagem.",
+    title: "Notas",
+    description: "Post-its partilhados.",
   },
   {
     icon: CheckCircle2Icon,
     title: "Fecha e recomeça",
-    description:
-      "Quando vais às compras, fecha a lista. Duplica para começar outra igual.",
+    description: "Duplica para nova ronda.",
   },
 ];
 
@@ -52,7 +49,6 @@ export default function Home() {
         </h1>
         <p className="text-muted-foreground mx-auto max-w-md text-base leading-relaxed sm:text-lg">
           Uma lista que tu e a tua família vão actualizando em tempo real.
-          Sem grupos de chat, sem &ldquo;alguém já comprou leite?&rdquo;.
         </p>
       </div>
       <div className="grid w-full gap-3 sm:grid-cols-3">

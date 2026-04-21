@@ -1,9 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import {
+  ArrowLeftIcon,
+  MailCheckIcon,
+  ShoppingBasketIcon,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth/context";
@@ -11,7 +17,7 @@ import { sendMagicLink, signInWithGoogle } from "@/lib/auth/sign-in";
 
 function GoogleGlyph() {
   return (
-    <svg viewBox="0 0 48 48" aria-hidden className="size-4">
+    <svg viewBox="0 0 48 48" aria-hidden className="size-5">
       <path
         fill="#EA4335"
         d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
@@ -32,6 +38,14 @@ function GoogleGlyph() {
   );
 }
 
+function AppMark() {
+  return (
+    <div className="bg-primary text-primary-foreground flex size-12 items-center justify-center rounded-2xl shadow-sm">
+      <ShoppingBasketIcon className="size-6" />
+    </div>
+  );
+}
+
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -39,6 +53,7 @@ function SignInForm() {
   const { user, loading } = useAuth();
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState<"google" | "email" | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && user) router.replace(redirect);
@@ -66,7 +81,7 @@ function SignInForm() {
         email,
         redirect === "/dashboard" ? undefined : redirect,
       );
-      toast.success("Verifica o teu email e clica no link para entrar.");
+      setSentTo(email);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Não foi possível enviar o link",
@@ -76,15 +91,85 @@ function SignInForm() {
     }
   }
 
+  if (sentTo) {
+    return (
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-10">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="bg-primary/10 text-primary flex size-14 items-center justify-center rounded-2xl">
+            <MailCheckIcon className="size-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Verifica o teu email
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Enviámos um link de entrada para{" "}
+              <strong className="text-foreground break-all">{sentTo}</strong>.
+              Clica nele para iniciar sessão (pode ir para a pasta spam).
+            </p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Button
+            variant="outline"
+            className="w-full"
+            size="lg"
+            onClick={() => setSentTo(null)}
+          >
+            Usar outro email
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full"
+            size="sm"
+            onClick={async () => {
+              setPending("email");
+              try {
+                await sendMagicLink(
+                  sentTo,
+                  redirect === "/dashboard" ? undefined : redirect,
+                );
+                toast.success("Link reenviado.");
+              } catch (err) {
+                toast.error(
+                  err instanceof Error ? err.message : "Erro a reenviar",
+                );
+              } finally {
+                setPending(null);
+              }
+            }}
+            disabled={pending !== null}
+          >
+            {pending === "email" ? "A reenviar…" : "Reenviar"}
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-6 px-6 py-10">
-      <div className="space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Entrar
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Escolhe como queres iniciar sessão.
-        </p>
+      <Link
+        href="/"
+        className={
+          buttonVariants({ variant: "ghost", size: "sm" }) +
+          " text-muted-foreground -ml-2 self-start"
+        }
+        aria-label="Voltar"
+      >
+        <ArrowLeftIcon /> Voltar
+      </Link>
+
+      <div className="flex flex-col items-center gap-4 text-center">
+        <AppMark />
+        <div className="space-y-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            Bem-vindo
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Entra para ver e partilhar as tuas listas.
+          </p>
+        </div>
       </div>
 
       <div className="bg-card border-border space-y-5 rounded-2xl border p-5 shadow-sm">
@@ -92,7 +177,7 @@ function SignInForm() {
           onClick={onGoogle}
           disabled={pending !== null}
           variant="outline"
-          className="w-full"
+          className="w-full gap-3"
           size="lg"
         >
           <GoogleGlyph />
@@ -101,12 +186,14 @@ function SignInForm() {
 
         <div className="text-muted-foreground flex items-center gap-3 text-xs tracking-wider uppercase">
           <span className="border-border h-px flex-1 border-t" />
-          ou
+          ou por email
           <span className="border-border h-px flex-1 border-t" />
         </div>
 
         <form className="space-y-3" onSubmit={onEmail}>
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" className="sr-only">
+            Email
+          </Label>
           <Input
             id="email"
             type="email"
@@ -115,6 +202,7 @@ function SignInForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="tu@example.com"
+            className="h-10"
           />
           <Button
             type="submit"
@@ -126,6 +214,11 @@ function SignInForm() {
           </Button>
         </form>
       </div>
+
+      <p className="text-muted-foreground text-center text-xs">
+        Ao entrares concordas em partilhar apenas o nome e o email com os
+        outros membros das tuas listas.
+      </p>
     </main>
   );
 }

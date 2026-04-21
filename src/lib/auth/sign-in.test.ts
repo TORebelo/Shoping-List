@@ -87,10 +87,10 @@ describe("completeEmailSignIn", () => {
     localStorage.clear();
   });
 
-  it("no-ops when current URL is not a sign-in link", async () => {
+  it("returns kind='not-a-link' when current URL is not a sign-in link", async () => {
     mocks.isSignInWithEmailLink.mockReturnValue(false);
     const result = await completeEmailSignIn();
-    expect(result).toBeNull();
+    expect(result).toEqual({ kind: "not-a-link" });
     expect(mocks.signInWithEmailLink).not.toHaveBeenCalled();
   });
 
@@ -105,11 +105,16 @@ describe("completeEmailSignIn", () => {
       window.location.href,
     );
     expect(localStorage.getItem(PENDING_EMAIL_KEY)).toBeNull();
-    expect(result).toEqual({ user: { uid: "u1" } });
+    expect(result).toEqual({
+      kind: "success",
+      credential: { user: { uid: "u1" } },
+    });
   });
 
-  it("throws with a descriptive error when storage is empty", async () => {
+  it("returns kind='needs-email' when link is valid but storage is empty (cross-device)", async () => {
     mocks.isSignInWithEmailLink.mockReturnValue(true);
-    await expect(completeEmailSignIn()).rejects.toThrow(/email/i);
+    const result = await completeEmailSignIn();
+    expect(result).toEqual({ kind: "needs-email" });
+    expect(mocks.signInWithEmailLink).not.toHaveBeenCalled();
   });
 });

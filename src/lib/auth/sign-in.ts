@@ -35,17 +35,41 @@ export async function sendMagicLink(
   localStorage.setItem(PENDING_EMAIL_KEY, email);
 }
 
-export async function completeEmailSignIn(): Promise<UserCredential | null> {
+export type CompleteEmailSignInResult =
+  | { kind: "not-a-link" }
+  | { kind: "needs-email" }
+  | { kind: "success"; credential: UserCredential };
+
+/**
+ * Attempts to finalize an email-link sign-in using the email cached in
+ * localStorage. Returns "needs-email" when the link is valid but the
+ * caller's storage is empty (typical for cross-device flow: request on
+ * desktop, open link on phone) — callers should prompt the user and then
+ * call `completeEmailSignInWith(email)` to retry.
+ */
+export async function completeEmailSignIn(): Promise<CompleteEmailSignInResult> {
   const auth = getAuthClient();
   const href = window.location.href;
-  if (!isSignInWithEmailLink(auth, href)) return null;
+  if (!isSignInWithEmailLink(auth, href)) return { kind: "not-a-link" };
   const email = localStorage.getItem(PENDING_EMAIL_KEY);
-  if (!email) {
-    throw new Error(
-      "Não encontrámos o email usado para iniciar sessão. Tenta novamente.",
-    );
-  }
-  const result = await signInWithEmailLink(auth, email, href);
+  if (!email) return { kind: "needs-email" };
+  const credential = await signInWithEmailLink(auth, email, href);
   localStorage.removeItem(PENDING_EMAIL_KEY);
-  return result;
+  return { kind: "success", credential };
+}
+
+export async function completeEmailSignInWith(
+  email: string,
+): Promise<UserCredential> {
+  if (!EMAIL_RE.test(email)) {
+    throw new Error("Email inválido");
+  }
+  const auth = getAuthClient();
+  const href = window.location.href;
+  if (!isSignInWithEmailLink(auth, href)) {
+    throw new Error("Este link não é um link de sessão válido.");
+  }
+  const credential = await signInWithEmailLink(auth, email, href);
+  localStorage.removeItem(PENDING_EMAIL_KEY);
+  return credential;
 }
