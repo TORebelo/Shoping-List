@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Mockup — List UX</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #0a0a0a;
+        --muted: #737373;
+        --border: #e5e5e5;
+        --card: #ffffff;
+        --accent: #f5f5f5;
+        --primary: #171717;
+        --primary-fg: #fafafa;
+        --radius: 12px;
+        --header-h: 92px;
+        --notes-h-closed: 36px;
+        --input-h: 68px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0a0a;
+          --fg: #fafafa;
+          --muted: #a3a3a3;
+          --border: #262626;
+          --card: #171717;
+          --accent: #1f1f1f;
+          --primary: #fafafa;
+          --primary-fg: #0a0a0a;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; height: 100%; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        background: #f0f0f0;
+        color: var(--fg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #050505; }
+      }
+
+      /* Phone frame (only on wider screens; on mobile the app fills the viewport) */
+      .phone {
+        width: 100%;
+        max-width: 420px;
+        height: 100dvh;
+        background: var(--bg);
+        color: var(--fg);
+        border-radius: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+      @media (min-width: 640px) {
+        .phone {
+          height: 812px;
+          border-radius: 40px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.2), 0 0 0 10px #1a1a1a, 0 0 0 12px #2a2a2a;
+        }
+      }
+
+      /* Header — sticky/fixed at top */
+      header.app-header {
+        flex: 0 0 auto;
+        padding: 14px 16px 12px;
+        background: color-mix(in oklab, var(--bg) 88%, transparent);
+        backdrop-filter: saturate(180%) blur(14px);
+        -webkit-backdrop-filter: saturate(180%) blur(14px);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .row { display: flex; align-items: center; gap: 8px; }
+      .row.between { justify-content: space-between; }
+      .icon-btn {
+        width: 36px; height: 36px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: none; background: transparent; color: var(--fg);
+        border-radius: 10px; cursor: pointer;
+      }
+      .icon-btn:hover { background: var(--accent); }
+      h1 {
+        margin: 0; font-size: 20px; font-weight: 600;
+        letter-spacing: -0.01em; flex: 1; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      }
+      .avatars { display: flex; }
+      .avatar {
+        width: 26px; height: 26px; border-radius: 999px;
+        background: var(--accent);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 600;
+        border: 2px solid var(--bg);
+        margin-left: -8px;
+        color: #fff;
+      }
+      .avatar:first-child { margin-left: 0; }
+      .meta { color: var(--muted); font-size: 12px; }
+      .meta code { font-family: ui-monospace, monospace; }
+
+      /* Notes strip — collapsible */
+      .notes-strip {
+        flex: 0 0 auto;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg);
+      }
+      .notes-toggle {
+        width: 100%;
+        display: flex; align-items: center; gap: 8px;
+        padding: 10px 16px;
+        background: transparent; border: none;
+        color: var(--fg); text-align: left; cursor: pointer;
+        font: inherit; font-size: 13px;
+      }
+      .notes-toggle:hover { background: var(--accent); }
+      .notes-toggle .preview {
+        flex: 1; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        color: var(--muted);
+      }
+      .notes-toggle .count {
+        font-weight: 600;
+        color: var(--fg);
+      }
+      .notes-toggle .chev {
+        transition: transform 0.2s ease;
+      }
+      .notes-strip.open .notes-toggle .chev { transform: rotate(180deg); }
+      .notes-body {
+        display: none;
+        padding: 0 16px 14px;
+        gap: 8px;
+        grid-template-columns: 1fr;
+      }
+      .notes-strip.open .notes-body { display: grid; }
+      .note {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-left: 4px solid;
+        border-radius: var(--radius);
+        padding: 10px 12px;
+        font-size: 13px;
+        display: flex; gap: 8px; align-items: flex-start;
+      }
+      .note .author {
+        color: var(--muted); font-size: 11px;
+        flex-shrink: 0;
+      }
+      .note-form {
+        display: flex; gap: 6px; padding: 0 16px 12px;
+      }
+      .notes-strip.open .note-form { display: flex; }
+      .notes-strip:not(.open) .note-form { display: none; }
+      .note-form input {
+        flex: 1; min-width: 0;
+        padding: 7px 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg); color: var(--fg);
+        font: inherit; font-size: 13px;
+      }
+      .note-form button {
+        padding: 7px 12px;
+        border: 1px solid var(--border);
+        background: var(--accent); color: var(--fg);
+        border-radius: 8px; font-size: 13px; cursor: pointer;
+      }
+
+      /* Items — the only scrollable region */
+      .items {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 8px 16px 16px;
+        overscroll-behavior: contain;
+      }
+      .item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+        margin-bottom: 6px;
+      }
+      .item .check {
+        width: 22px; height: 22px; border-radius: 999px;
+        border: 2px solid var(--border);
+        display: inline-flex; align-items: center; justify-content: center;
+        flex-shrink: 0; cursor: pointer;
+        background: transparent;
+      }
+      .item.checked .check {
+        background: var(--primary); border-color: var(--primary);
+        color: var(--primary-fg);
+      }
+      .item.checked .text {
+        text-decoration: line-through; color: var(--muted);
+      }
+      .item .text { flex: 1; min-width: 0; font-size: 15px; }
+      .item .qty { color: var(--muted); font-size: 12px; }
+      .item .by {
+        width: 20px; height: 20px; border-radius: 999px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 10px; font-weight: 600; color: #fff;
+      }
+
+      /* Sticky bottom add-input */
+      .add-bar {
+        flex: 0 0 auto;
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+        border-top: 1px solid var(--border);
+        background: color-mix(in oklab, var(--bg) 88%, transparent);
+        backdrop-filter: saturate(180%) blur(14px);
+        -webkit-backdrop-filter: saturate(180%) blur(14px);
+        position: sticky;
+        bottom: 0;
+      }
+      .add-bar form {
+        display: flex; gap: 8px; align-items: center;
+      }
+      .add-bar input {
+        flex: 1; min-width: 0;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--bg); color: var(--fg);
+        font: inherit; font-size: 15px;
+      }
+      .add-bar button {
+        width: 44px; height: 44px;
+        border-radius: 999px; border: none;
+        background: var(--primary); color: var(--primary-fg);
+        font-size: 20px; font-weight: 600;
+        cursor: pointer; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+      }
+
+      /* Option toggle (top-right floating label) */
+      .toggle-bar {
+        position: fixed;
+        top: 8px; left: 50%;
+        transform: translateX(-50%);
+        display: flex; gap: 6px;
+        background: #1a1a1a; color: #fafafa;
+        padding: 4px; border-radius: 999px;
+        font-size: 12px;
+        z-index: 50;
+      }
+      .toggle-bar button {
+        padding: 6px 12px; border-radius: 999px;
+        border: none; background: transparent; color: #fafafa;
+        cursor: pointer; font: inherit;
+      }
+      .toggle-bar button.active { background: #fafafa; color: #0a0a0a; }
+
+      /* SVG icons */
+      svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </head>
+  <body>
+    <div class="toggle-bar">
+      <button class="active" onclick="setVariant('b')">Hdr + Input fixos</button>
+      <button onclick="setVariant('c')">Tudo fixo</button>
+      <button onclick="setVariant('a')">Só header fixo</button>
+    </div>
+
+    <div class="phone" id="phone">
+      <header class="app-header">
+        <div class="row">
+          <button class="icon-btn" aria-label="Voltar">
+            <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          </button>
+          <h1>Compras da semana</h1>
+          <button class="icon-btn" aria-label="Convidar">
+            <svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M19 8v6M22 11h-6"/></svg>
+          </button>
+          <button class="icon-btn" aria-label="Menu">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+          </button>
+        </div>
+        <div class="row between" style="margin-top:8px;">
+          <div class="row" style="gap:10px;">
+            <div class="avatars">
+              <span class="avatar" style="background:#0891b2;">AT</span>
+              <span class="avatar" style="background:#be185d;">MF</span>
+              <span class="avatar" style="background:#4d7c0f;">JP</span>
+            </div>
+            <span class="meta">12 itens · <code>AB3F9</code></span>
+          </div>
+        </div>
+      </header>
+
+      <div class="notes-strip" id="notes">
+        <button class="notes-toggle" onclick="document.getElementById('notes').classList.toggle('open')">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="count">2 notas</span>
+          <span class="preview">· Leite sem lactose — Maria é alérgica +1</span>
+          <svg class="chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="notes-body">
+          <div class="note" style="border-left-color:#be185d;">
+            <span style="flex:1;">Leite sem lactose — Maria é alérgica</span>
+            <span class="author">Maria</span>
+          </div>
+          <div class="note" style="border-left-color:#0891b2;">
+            <span style="flex:1;">Encontro às 18h na entrada do Continente</span>
+            <span class="author">António</span>
+          </div>
+        </div>
+        <form class="note-form" onsubmit="event.preventDefault()">
+          <input placeholder="Adicionar nota…" />
+          <button type="submit">Adicionar</button>
+        </form>
+      </div>
+
+      <div class="items">
+        <div class="item"><span class="check"></span><span class="text">Maçãs Gala</span><span class="qty">1kg</span><span class="by" style="background:#0891b2;">AT</span></div>
+        <div class="item"><span class="check"></span><span class="text">Pão de forma integral</span><span class="by" style="background:#be185d;">MF</span></div>
+        <div class="item checked"><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="text">Ovos biológicos</span><span class="qty">12un</span><span class="by" style="background:#4d7c0f;">JP</span></div>
+        <div class="item"><span class="check"></span><span class="text">Iogurtes naturais</span><span class="qty">4un</span><span class="by" style="background:#be185d;">MF</span></div>
+        <div class="item"><span class="check"></span><span class="text">Salmão fresco</span><span class="by" style="background:#0891b2;">AT</span></div>
+        <div class="item checked"><span class="check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span class="text">Arroz basmati</span><span class="qty">1kg</span><span class="by" style="background:#4d7c0f;">JP</span></div>
+        <div class="item"><span class="check"></span><span class="text">Tomate chucha</span><span class="qty">500g</span><span class="by" style="background:#be185d;">MF</span></div>
+        <div class="item"><span class="check"></span><span class="text">Azeite virgem extra</span><span class="by" style="background:#0891b2;">AT</span></div>
+        <div class="item"><span class="check"></span><span class="text">Papel higiénico</span><span class="qty">12 rolos</span><span class="by" style="background:#4d7c0f;">JP</span></div>
+        <div class="item"><span class="check"></span><span class="text">Detergente máquina</span><span class="by" style="background:#be185d;">MF</span></div>
+        <div class="item"><span class="check"></span><span class="text">Bananas</span><span class="qty">1 penca</span><span class="by" style="background:#0891b2;">AT</span></div>
+        <div class="item"><span class="check"></span><span class="text">Café em grão</span><span class="qty">250g</span><span class="by" style="background:#4d7c0f;">JP</span></div>
+      </div>
+
+      <div class="add-bar">
+        <form onsubmit="event.preventDefault()">
+          <input placeholder="Adicionar item…" aria-label="Adicionar item" />
+          <button type="submit" aria-label="Adicionar">+</button>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function setVariant(v) {
+        document.querySelectorAll('.toggle-bar button').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+        const phone = document.getElementById('phone');
+        const notes = document.getElementById('notes');
+        const addBar = document.querySelector('.add-bar');
+        if (v === 'a') {
+          // Only header fixed — notes and input inside the scroll
+          notes.style.position = 'static';
+          addBar.style.position = 'static';
+          addBar.style.borderTop = '1px solid var(--border)';
+          notes.classList.remove('open');
+        } else if (v === 'b') {
+          // Header sticky top + input sticky bottom + notes collapsible in between (default)
+          notes.style.position = 'static';
+          addBar.style.position = 'sticky';
+          addBar.style.bottom = '0';
+        } else if (v === 'c') {
+          // Everything pinned — notes open by default
+          notes.style.position = 'static';
+          addBar.style.position = 'sticky';
+          addBar.style.bottom = '0';
+          notes.classList.add('open');
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { StickyNoteIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, StickyNoteIcon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export function NotesPanel({
 }) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -65,69 +66,102 @@ export function NotesPanel({
 
   if (notes.length === 0 && readOnly) return null;
 
+  const count = notes.length;
+  const label =
+    count === 0
+      ? "Adicionar nota"
+      : count === 1
+        ? "1 nota"
+        : `${count} notas`;
+  const preview = count > 0 ? notes[0].text : null;
+
   return (
-    <section className="space-y-2">
-      <h2 className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-widest uppercase">
-        <StickyNoteIcon className="size-3" /> Notas
-      </h2>
-      {notes.length === 0 ? null : (
-        <div className="grid gap-2 sm:grid-cols-2">
-          {notes.map((n) => {
-            const mine = n.addedBy === actor.uid;
-            return (
-              <div
-                key={n.id}
-                className={cn(
-                  "group relative flex items-start gap-2 rounded-xl px-3 py-2.5",
-                  "border border-l-4 bg-card shadow-sm",
-                )}
-                style={{
-                  borderLeftColor: n.addedByColor,
-                }}
-              >
-                <p className="min-w-0 flex-1 text-sm whitespace-pre-wrap">
-                  {n.text}
-                </p>
-                <span
-                  className="text-muted-foreground shrink-0 text-[10px] tracking-wide"
-                  title={n.addedByName}
-                >
-                  {n.addedByName.split(" ")[0]}
-                </span>
-                {!readOnly && mine ? (
-                  <Button
-                    size="icon-xs"
-                    variant="ghost"
-                    aria-label="Apagar nota"
-                    onClick={() => onRemove(n)}
-                    className="absolute right-1.5 top-1.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+    <section className="border-border rounded-xl border bg-card/50">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="hover:bg-muted/40 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs transition"
+      >
+        <StickyNoteIcon className="size-3.5 shrink-0 opacity-70" />
+        <span className="text-foreground font-medium">{label}</span>
+        {preview && !expanded ? (
+          <span className="text-muted-foreground min-w-0 flex-1 truncate">
+            · {preview}
+          </span>
+        ) : (
+          <span className="flex-1" />
+        )}
+        <ChevronDownIcon
+          className={cn(
+            "size-4 shrink-0 opacity-60 transition-transform",
+            expanded && "rotate-180",
+          )}
+        />
+      </button>
+
+      {expanded ? (
+        <div className="space-y-2 px-3 pb-3">
+          {notes.length > 0 ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {notes.map((n) => {
+                const mine = n.addedBy === actor.uid;
+                return (
+                  <div
+                    key={n.id}
+                    className={cn(
+                      "group relative flex items-start gap-2 rounded-xl px-3 py-2.5",
+                      "border border-l-4 bg-card shadow-sm",
+                    )}
+                    style={{
+                      borderLeftColor: n.addedByColor,
+                    }}
                   >
-                    <XIcon />
-                  </Button>
-                ) : null}
-              </div>
-            );
-          })}
+                    <p className="min-w-0 flex-1 text-sm whitespace-pre-wrap">
+                      {n.text}
+                    </p>
+                    <span
+                      className="text-muted-foreground shrink-0 text-[10px] tracking-wide"
+                      title={n.addedByName}
+                    >
+                      {n.addedByName.split(" ")[0]}
+                    </span>
+                    {!readOnly && mine ? (
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        aria-label="Apagar nota"
+                        onClick={() => onRemove(n)}
+                        className="absolute top-1.5 right-1.5 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+                      >
+                        <XIcon />
+                      </Button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+          {!readOnly ? (
+            <form onSubmit={onSubmit} className="flex gap-2">
+              <Input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Adicionar nota…"
+                maxLength={200}
+                className="min-w-0 flex-1"
+                aria-label="Nova nota"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={submitting || text.trim().length === 0}
+              >
+                Adicionar
+              </Button>
+            </form>
+          ) : null}
         </div>
-      )}
-      {!readOnly ? (
-        <form onSubmit={onSubmit} className="flex gap-2">
-          <Input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Adicionar nota…"
-            maxLength={200}
-            className="min-w-0 flex-1"
-            aria-label="Nova nota"
-          />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={submitting || text.trim().length === 0}
-          >
-            Adicionar
-          </Button>
-        </form>
       ) : null}
     </section>
   );

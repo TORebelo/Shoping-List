@@ -80,8 +80,8 @@ export default function ListPage({
   };
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 space-y-5 px-4 py-6 sm:px-6">
-      <header className="space-y-3">
+    <main className="mx-auto flex h-[100dvh] w-full max-w-2xl flex-col overflow-hidden">
+      <header className="bg-background border-border shrink-0 border-b px-4 pt-4 pb-3 sm:px-6 sm:pt-6">
         <div className="flex items-center gap-2">
           <Link
             href="/dashboard"
@@ -103,85 +103,83 @@ export default function ListPage({
               </span>
             ) : null}
           </div>
+          <InviteDialog
+            listId={id}
+            inviteCode={list.inviteCode}
+            isOwner={isOwner}
+            actor={{ uid: user.uid }}
+          />
+          <ListMenu
+            listId={id}
+            listName={list.name}
+            listStatus={list.status}
+            itemCount={items.length}
+            isOwner={isOwner}
+            actor={{
+              uid: user.uid,
+              displayName: user.displayName ?? user.email ?? "Membro",
+            }}
+          />
         </div>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <MemberAvatars
-              members={members.map((m) => ({
-                uid: m.uid,
-                displayName: m.displayName,
-                color: m.color,
-              }))}
-            />
-            <p className="text-muted-foreground text-xs">
-              {items.length} {items.length === 1 ? "item" : "itens"}
-              {list.inviteCode ? (
-                <>
-                  <span className="mx-1.5 opacity-40">·</span>
-                  <code className="font-mono">{list.inviteCode}</code>
-                </>
-              ) : null}
-            </p>
-          </div>
-          <div className="flex items-center gap-1">
-            <InviteDialog
-              listId={id}
-              inviteCode={list.inviteCode}
-              isOwner={isOwner}
-              actor={{ uid: user.uid }}
-            />
-            <ListMenu
-              listId={id}
-              listName={list.name}
-              listStatus={list.status}
-              itemCount={items.length}
-              isOwner={isOwner}
-              actor={{
-                uid: user.uid,
-                displayName: user.displayName ?? user.email ?? "Membro",
-              }}
-            />
-          </div>
+        <div className="mt-2 flex items-center gap-3">
+          <MemberAvatars
+            members={members.map((m) => ({
+              uid: m.uid,
+              displayName: m.displayName,
+              color: m.color,
+            }))}
+          />
+          <p className="text-muted-foreground text-xs">
+            {items.length} {items.length === 1 ? "item" : "itens"}
+            {list.inviteCode ? (
+              <>
+                <span className="mx-1.5 opacity-40">·</span>
+                <code className="font-mono">{list.inviteCode}</code>
+              </>
+            ) : null}
+          </p>
         </div>
       </header>
 
-      <NotesPanel
-        listId={id}
-        notes={notes}
-        actor={actor}
-        readOnly={isClosed}
-      />
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pt-4 pb-4 sm:px-6 [overscroll-behavior:contain]">
+        <NotesPanel
+          listId={id}
+          notes={notes}
+          actor={actor}
+          readOnly={isClosed}
+        />
+
+        {items.length === 0 ? (
+          <EmptyState
+            icon={<ShoppingBasketIcon />}
+            title={isClosed ? "Lista fechada sem itens" : "A lista está vazia"}
+            description={
+              isClosed
+                ? "Esta lista foi fechada sem nada dentro."
+                : "Adiciona o primeiro item abaixo."
+            }
+          />
+        ) : (
+          <div className="space-y-2">
+            {items.map((item) => (
+              <ItemRow
+                key={item.id}
+                listId={id}
+                item={item}
+                actor={actor}
+                canDelete={isOwner || item.addedBy === user.uid}
+                readOnly={isClosed}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {!isClosed ? (
-        <AddItemInput listId={id} actor={actor} existingItems={items} />
-      ) : null}
-
-      {items.length === 0 ? (
-        <EmptyState
-          icon={<ShoppingBasketIcon />}
-          title={
-            isClosed ? "Lista fechada sem itens" : "A lista está vazia"
-          }
-          description={
-            isClosed
-              ? "Esta lista foi fechada sem nada dentro."
-              : "Adiciona o primeiro item acima."
-          }
-        />
-      ) : (
-        <div className="space-y-2">
-          {items.map((item) => (
-            <ItemRow
-              key={item.id}
-              listId={id}
-              item={item}
-              actor={actor}
-              canDelete={isOwner || item.addedBy === user.uid}
-              readOnly={isClosed}
-            />
-          ))}
+        <div className="bg-background border-border shrink-0 border-t px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] sm:px-6">
+          <AddItemInput listId={id} actor={actor} existingItems={items} />
         </div>
-      )}
+      ) : null}
     </main>
   );
 }
