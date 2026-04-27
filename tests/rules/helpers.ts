@@ -46,6 +46,7 @@ export async function seedList(
     listId: string;
     ownerUid: string;
     memberUids?: string[];
+    ownerUids?: string[];
     inviteCode?: string;
     status?: "active" | "closed";
     itemCount?: number;
@@ -55,6 +56,7 @@ export async function seedList(
     listId,
     ownerUid,
     memberUids = [ownerUid],
+    ownerUids = [ownerUid],
     inviteCode = `inv-${listId}`,
     status = "active",
     itemCount = 0,
@@ -77,7 +79,7 @@ export async function seedList(
         uid,
         displayName: uid,
         color: "#ef4444",
-        role: uid === ownerUid ? "owner" : "member",
+        role: ownerUids.includes(uid) ? "owner" : "member",
         joinedAt: new Date(),
       });
       await setDoc(doc(db, "users", uid), {

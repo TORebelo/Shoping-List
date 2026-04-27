@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckCircle2Icon, MoreVerticalIcon } from "lucide-react";
+import { CheckCircle2Icon, MoreVerticalIcon, UsersIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { MembersDialog } from "@/components/members-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,9 +26,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { deleteList, leaveList } from "@/lib/data/admin";
 import { closeList } from "@/lib/data/close-list";
+import type { MemberDoc } from "@/lib/domain/types";
 import { getDb } from "@/lib/firebase/client";
 
-type Mode = null | "close" | "leave" | "delete";
+type Mode = null | "members" | "close" | "leave" | "delete";
 
 export function ListMenu({
   listId,
@@ -35,12 +37,14 @@ export function ListMenu({
   listStatus,
   isOwner,
   actor,
+  members,
 }: {
   listId: string;
   listName: string;
   listStatus: "active" | "closed";
   isOwner: boolean;
   actor: { uid: string };
+  members: MemberDoc[];
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(null);
@@ -99,6 +103,9 @@ export function ListMenu({
           <MoreVerticalIcon />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setMode("members")}>
+            <UsersIcon /> Gerir membros
+          </DropdownMenuItem>
           {listStatus === "active" ? (
             <DropdownMenuItem onClick={() => setMode("close")}>
               <CheckCircle2Icon /> Fechar lista
@@ -120,6 +127,15 @@ export function ListMenu({
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <MembersDialog
+        listId={listId}
+        members={members}
+        currentUid={actor.uid}
+        isOwner={isOwner}
+        open={mode === "members"}
+        onOpenChange={(o) => setMode(o ? "members" : null)}
+      />
 
       <Dialog
         open={mode === "close"}

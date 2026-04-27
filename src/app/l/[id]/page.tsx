@@ -113,6 +113,7 @@ export default function ListPage({
             listStatus={list.status}
             isOwner={isOwner}
             actor={{ uid: user.uid }}
+            members={members}
           />
         </div>
       </header>

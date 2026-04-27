@@ -86,7 +86,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("firebase/firestore", () => mocks);
 
-import { deleteList, leaveList, removeMember } from "./admin";
+import {
+  deleteList,
+  leaveList,
+  removeMember,
+  setMemberRole,
+} from "./admin";
 
 const db = { __fake: "db" } as never;
 
@@ -127,7 +132,27 @@ describe("leaveList", () => {
   it("refuses to leave when user is the only owner and members remain", async () => {
     await expect(
       leaveList({ db, listId: "l1", uid: "owner" }),
-    ).rejects.toThrow(/ownership|dono/i);
+    ).rejects.toThrow(/administrador|ownership/i);
+  });
+
+  it("allows owner to leave when another owner remains", async () => {
+    state.list = {
+      id: "l1",
+      createdBy: "owner",
+      memberIds: ["owner", "owner2", "member2"],
+      inviteCode: "abc",
+    };
+    state.members = {
+      owner: { uid: "owner", role: "owner" },
+      owner2: { uid: "owner2", role: "owner" },
+      member2: { uid: "member2", role: "member" },
+    };
+    await leaveList({ db, listId: "l1", uid: "owner" });
+    expect(
+      state.ops.find(
+        (o) => o.op === "delete" && o.path === "lists/l1/members/owner",
+      ),
+    ).toBeDefined();
   });
 
   it("allows last member to leave and deletes the list", async () => {
@@ -187,7 +212,7 @@ describe("removeMember", () => {
         uidToRemove: "owner",
         actor: { uid: "member2" },
       }),
-    ).rejects.toThrow(/dono/i);
+    ).rejects.toThrow(/administrador/i);
   });
 
   it("owner cannot remove themselves via removeMember", async () => {
@@ -233,12 +258,100 @@ describe("deleteList", () => {
   });
 
   it("non-owner cannot delete", async () => {
+    state.list = {
+      id: "l1",
+      createdBy: "owner",
+      memberIds: ["owner", "member2"],
+      inviteCode: "abc",
+    };
+    state.members = {
+      owner: { uid: "owner", role: "owner" },
+      member2: { uid: "member2", role: "member" },
+    };
     await expect(
       deleteList({
         db,
         listId: "l1",
-        actor: { uid: "someone-else" },
+        actor: { uid: "member2" },
       }),
-    ).rejects.toThrow(/dono/i);
+    ).rejects.toThrow(/administrador/i);
+  });
+});
+
+describe("setMemberRole", () => {
+  beforeEach(() => {
+    state.ops = [];
+    state.list = {
+      id: "l1",
+      createdBy: "owner",
+      memberIds: ["owner", "member2"],
+      inviteCode: "abc",
+    };
+    state.members = {
+      owner: { uid: "owner", role: "owner" },
+      member2: { uid: "member2", role: "member" },
+    };
+  });
+
+  it("owner promotes a member to owner", async () => {
+    await setMemberRole({
+      db,
+      listId: "l1",
+      targetUid: "member2",
+      role: "owner",
+      actor: { uid: "owner" },
+    });
+    const update = state.ops.find(
+      (o) => o.op === "update" && o.path === "lists/l1/members/member2",
+    );
+    expect(update!.data).toEqual({ role: "owner" });
+  });
+
+  it("non-owner cannot change roles", async () => {
+    await expect(
+      setMemberRole({
+        db,
+        listId: "l1",
+        targetUid: "owner",
+        role: "member",
+        actor: { uid: "member2" },
+      }),
+    ).rejects.toThrow(/administrador/i);
+  });
+
+  it("refuses to demote the last remaining owner", async () => {
+    await expect(
+      setMemberRole({
+        db,
+        listId: "l1",
+        targetUid: "owner",
+        role: "member",
+        actor: { uid: "owner" },
+      }),
+    ).rejects.toThrow(/administrador/i);
+  });
+
+  it("allows demoting an owner when another owner remains", async () => {
+    state.list = {
+      id: "l1",
+      createdBy: "owner",
+      memberIds: ["owner", "owner2"],
+      inviteCode: "abc",
+    };
+    state.members = {
+      owner: { uid: "owner", role: "owner" },
+      owner2: { uid: "owner2", role: "owner" },
+    };
+    await setMemberRole({
+      db,
+      listId: "l1",
+      targetUid: "owner2",
+      role: "member",
+      actor: { uid: "owner" },
+    });
+    const update = state.ops.find(
+      (o) => o.op === "update" && o.path === "lists/l1/members/owner2",
+    );
+    expect(update!.data).toEqual({ role: "member" });
   });
 });

@@ -122,4 +122,64 @@ describe("members rules", () => {
       deleteDoc(doc(bob.firestore(), "lists/l1/members/bob")),
     );
   });
+
+  it("joining member cannot self-assign 'owner' role", async () => {
+    const env = await getTestEnv();
+    await seedList(env, { listId: "l1", ownerUid: "alice" });
+    const bob = env.authenticatedContext("bob");
+    await assertFails(
+      setDoc(doc(bob.firestore(), "lists/l1/members/bob"), {
+        uid: "bob",
+        displayName: "Bob",
+        color: "#3b82f6",
+        role: "owner",
+        joinedAt: new Date(),
+      }),
+    );
+  });
+
+  it("promoted owner can change another member's role", async () => {
+    const env = await getTestEnv();
+    await seedList(env, {
+      listId: "l1",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob", "carol"],
+      ownerUids: ["alice", "bob"],
+    });
+    const bob = env.authenticatedContext("bob");
+    await assertSucceeds(
+      updateDoc(doc(bob.firestore(), "lists/l1/members/carol"), {
+        role: "owner",
+      }),
+    );
+  });
+
+  it("plain member cannot change another member's role", async () => {
+    const env = await getTestEnv();
+    await seedList(env, {
+      listId: "l1",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob", "carol"],
+    });
+    const bob = env.authenticatedContext("bob");
+    await assertFails(
+      updateDoc(doc(bob.firestore(), "lists/l1/members/carol"), {
+        role: "owner",
+      }),
+    );
+  });
+
+  it("promoted owner can remove another member", async () => {
+    const env = await getTestEnv();
+    await seedList(env, {
+      listId: "l1",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob", "carol"],
+      ownerUids: ["alice", "bob"],
+    });
+    const bob = env.authenticatedContext("bob");
+    await assertSucceeds(
+      deleteDoc(doc(bob.firestore(), "lists/l1/members/carol")),
+    );
+  });
 });

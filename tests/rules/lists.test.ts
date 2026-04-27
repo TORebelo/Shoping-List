@@ -191,4 +191,16 @@ describe("lists rules", () => {
     const alice = env.authenticatedContext("alice");
     await assertSucceeds(deleteDoc(doc(alice.firestore(), "lists/l1")));
   });
+
+  it("delete: promoted owner (not list creator) can delete", async () => {
+    const env = await getTestEnv();
+    await seedList(env, {
+      listId: "l1",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob"],
+      ownerUids: ["alice", "bob"],
+    });
+    const bob = env.authenticatedContext("bob");
+    await assertSucceeds(deleteDoc(doc(bob.firestore(), "lists/l1")));
+  });
 });

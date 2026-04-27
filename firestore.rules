@@ -28,8 +28,8 @@ service cloud.firestore {
 
     function isOwner(listId) {
       return isSignedIn()
-        && listExists(listId)
-        && listData(listId).createdBy == request.auth.uid;
+        && exists(/databases/$(database)/documents/lists/$(listId)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/lists/$(listId)/members/$(request.auth.uid)).data.role == 'owner';
     }
 
     // Membership check that sees docs written earlier in the same batch;
@@ -147,8 +147,7 @@ service cloud.firestore {
           || request.resource.data.itemCount == resource.data.itemCount
         );
 
-      allow delete: if isSignedIn()
-        && resource.data.createdBy == request.auth.uid;
+      allow delete: if isOwner(listId);
 
       // ---------- members ----------
 
@@ -158,11 +157,22 @@ service cloud.firestore {
         // rules fast and avoids races against the parent list commit).
         allow read: if isSignedIn();
 
+        // Role at member-doc creation: only the list creator can self-assign
+        // 'owner' (during the atomic createList batch); everyone else joining
+        // via invite must be 'member'. Promotion to owner happens via update,
+        // gated by isOwner.
         allow create: if isSelf(memberUid)
           && request.resource.data.uid == memberUid
-          && request.resource.data.role in ['owner', 'member']
           && request.resource.data.color is string
-          && request.resource.data.displayName is string;
+          && request.resource.data.displayName is string
+          && (
+            (
+              existsAfter(/databases/$(database)/documents/lists/$(listId))
+              && getAfter(/databases/$(database)/documents/lists/$(listId)).data.createdBy == request.auth.uid
+              && request.resource.data.role == 'owner'
+            )
+            || request.resource.data.role == 'member'
+          );
 
         allow update: if
           (

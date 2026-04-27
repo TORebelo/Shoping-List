@@ -251,4 +251,19 @@ describe("items rules", () => {
       deleteDoc(doc(alice.firestore(), path("l1", "i1"))),
     );
   });
+
+  it("promoted owner can delete another member's item", async () => {
+    const env = await getTestEnv();
+    await seedList(env, {
+      listId: "l1",
+      ownerUid: "alice",
+      memberUids: ["alice", "bob", "carol"],
+      ownerUids: ["alice", "bob"],
+    });
+    await seedItem(env, { listId: "l1", itemId: "i1", addedBy: "carol" });
+    const bob = env.authenticatedContext("bob");
+    await assertSucceeds(
+      deleteDoc(doc(bob.firestore(), path("l1", "i1"))),
+    );
+  });
 });

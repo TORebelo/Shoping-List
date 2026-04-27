@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
     createdBy: string;
     inviteCode: string;
   },
+  members: {} as Record<string, { uid: string; role: "owner" | "member" }>,
   failTx: null as Error | null,
   deletedPaths: [] as string[],
 }));
@@ -39,6 +40,16 @@ const mocks = vi.hoisted(() => ({
       const tx = {
         get: async (ref: { __path: string }) => {
           state.ops.push({ op: "get", path: ref.__path });
+          const memberMatch = ref.__path.match(
+            /^lists\/[^/]+\/members\/(.+)$/,
+          );
+          if (memberMatch) {
+            const m = state.members[memberMatch[1]];
+            return {
+              exists: () => Boolean(m),
+              data: () => m,
+            };
+          }
           if (ref.__path.startsWith("lists/") && state.list) {
             return {
               exists: () => true,
@@ -74,6 +85,9 @@ describe("rotateInviteCode", () => {
       createdBy: "owner-uid",
       inviteCode: "old-code",
     };
+    state.members = {
+      "owner-uid": { uid: "owner-uid", role: "owner" },
+    };
   });
 
   it("writes new invite code and removes old mapping (owner)", async () => {
@@ -98,13 +112,14 @@ describe("rotateInviteCode", () => {
   });
 
   it("rejects non-owner actors", async () => {
+    state.members.other = { uid: "other", role: "member" };
     await expect(
       rotateInviteCode({
         db,
         listId: "l1",
         actor: { uid: "other" },
       }),
-    ).rejects.toThrow(/dono/i);
+    ).rejects.toThrow(/administrador/i);
   });
 
   it("throws when the list is missing", async () => {
